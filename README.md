@@ -2,7 +2,7 @@
 
 Single-page React app, built with Vite, designed to be deployed on Cloudflare Pages and embedded as an iframe on the AGM website.
 
-## Local development
+## Local development 
 
 ```bash
 npm install
