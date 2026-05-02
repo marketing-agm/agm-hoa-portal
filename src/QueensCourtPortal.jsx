@@ -1040,66 +1040,79 @@ const THEME_CSS = `
   }
 
   /* Folder detail (sub-page replacing the modal) */
-  .qc-folder-detail { padding-top: 4px; }
+  .qc-folder-detail { padding-top: 0; }
+  .qc-folder-detail-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: -2px 0 10px;
+  }
   .qc-folder-detail-back {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     background: transparent;
     border: none;
-    padding: 6px 8px;
-    margin: 0 0 18px -8px;
+    padding: 4px 8px 4px 6px;
+    margin-left: -8px;
     color: var(--t2);
     font-family: inherit;
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 500;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     cursor: pointer;
     border-radius: 4px;
     transition: color 0.12s ease, background-color 0.12s ease;
   }
   .qc-folder-detail-back:hover { color: var(--t1); background: var(--hover); }
-  .qc-folder-detail-header {
-    padding-bottom: 22px;
-    margin-bottom: 22px;
-    border-bottom: 1px solid var(--border-strong);
-  }
-  .qc-folder-detail-tags {
+  .qc-folder-detail-topbar-meta {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
+    gap: 12px;
+  }
+  .qc-folder-detail-header {
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border-strong);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
   }
   .qc-folder-detail-title {
-    font-size: 28px;
+    font-size: 22px;
     font-weight: 600;
     color: var(--t1);
     line-height: 1.2;
     letter-spacing: -0.02em;
-    margin: 0 0 10px;
+    margin: 0;
+    flex-shrink: 0;
   }
   .qc-folder-detail-narrative {
-    font-size: 14px;
-    line-height: 1.65;
+    font-size: 13px;
+    line-height: 1.5;
     color: var(--t2);
     margin: 0;
-    max-width: 78ch;
+    flex: 1;
+    min-width: 280px;
+    max-width: 72ch;
   }
   .qc-folder-detail-body {
     display: grid;
-    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
     gap: 0;
     border: 1px solid var(--border);
     border-radius: 12px;
     background: var(--surface);
     overflow: hidden;
-    min-height: 560px;
+    height: calc(100vh - 230px);
+    min-height: 460px;
   }
   .qc-folder-detail-list {
     border-right: 1px solid var(--border);
     background: var(--bg);
-    max-height: 720px;
     overflow-y: auto;
   }
   .qc-folder-detail-list-head {
@@ -1211,24 +1224,25 @@ const THEME_CSS = `
   }
   .qc-folder-detail-preview-frame {
     flex: 1;
-    padding: 28px;
+    padding: 24px;
     display: flex;
-    align-items: flex-start;
+    align-items: stretch;
     justify-content: center;
     overflow-y: auto;
+    min-height: 0;
   }
   .qc-doc-page {
     width: 100%;
-    max-width: 620px;
+    max-width: 560px;
     background: #fdfdfb;
     border: 1px solid var(--border);
     border-radius: 4px;
-    padding: 56px 64px 64px;
+    padding: 40px 52px 36px;
     box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
     color: #2a2a28;
-    aspect-ratio: 8.5 / 11;
     display: flex;
     flex-direction: column;
+    align-self: flex-start;
   }
   .qc-doc-page-header {
     text-transform: uppercase;
@@ -1236,42 +1250,42 @@ const THEME_CSS = `
     font-size: 9.5px;
     font-weight: 600;
     color: #8a8a85;
-    padding-bottom: 14px;
+    padding-bottom: 12px;
     border-bottom: 1px solid #e5e3dc;
-    margin-bottom: 28px;
+    margin-bottom: 22px;
   }
   .qc-doc-page-title {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 600;
     line-height: 1.25;
     letter-spacing: -0.015em;
-    margin: 0 0 8px;
+    margin: 0 0 6px;
     color: #1a1a18;
   }
   .qc-doc-page-date {
-    font-size: 11px;
+    font-size: 10.5px;
     color: #8a8a85;
     text-transform: uppercase;
     letter-spacing: 0.12em;
     font-weight: 500;
-    margin-bottom: 28px;
+    margin-bottom: 22px;
   }
   .qc-doc-page-lines {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 9px;
   }
   .qc-doc-page-line {
-    height: 8px;
+    height: 7px;
     background: #ece9e0;
     border-radius: 2px;
   }
   .qc-doc-page-line.short { width: 62%; }
   .qc-doc-page-line.med { width: 84%; }
-  .qc-doc-page-gap { height: 18px; }
+  .qc-doc-page-gap { height: 14px; }
   .qc-doc-page-foot {
-    margin-top: auto;
-    padding-top: 18px;
+    margin-top: 28px;
+    padding-top: 14px;
     border-top: 1px solid #e5e3dc;
     text-transform: uppercase;
     letter-spacing: 0.14em;
@@ -3486,13 +3500,12 @@ function FolderDetailPane({ folder, onBack }) {
 
   return (
     <section className="qc-folder-detail qc-fade-in">
-      <button onClick={onBack} className="qc-folder-detail-back" type="button">
-        <ChevronLeft size={13} strokeWidth={2} />
-        All sections
-      </button>
-
-      <header className="qc-folder-detail-header">
-        <div className="qc-folder-detail-tags">
+      <div className="qc-folder-detail-topbar">
+        <button onClick={onBack} className="qc-folder-detail-back" type="button">
+          <ChevronLeft size={13} strokeWidth={2} />
+          All sections
+        </button>
+        <div className="qc-folder-detail-topbar-meta">
           {folder.scope === "board" ? (
             <span className="qc-tag">
               <Lock size={9} strokeWidth={2.25} />
@@ -3505,6 +3518,9 @@ function FolderDetailPane({ folder, onBack }) {
             Latest {formatDateShort(lastUpdated(folder))}
           </span>
         </div>
+      </div>
+
+      <header className="qc-folder-detail-header">
         <h2 className="qc-folder-detail-title">{folder.name}</h2>
         <p className="qc-folder-detail-narrative">{folder.narrative}</p>
       </header>
