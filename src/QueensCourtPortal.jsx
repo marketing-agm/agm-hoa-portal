@@ -857,7 +857,7 @@ const THEME_CSS = `
   .qc-folder-row {
     width: 100%;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 36px 72px 16px;
+    grid-template-columns: minmax(0, 1fr) 72px 16px;
     align-items: start;
     gap: 28px;
     padding: 18px 14px;
@@ -914,14 +914,6 @@ const THEME_CSS = `
     margin: 0;
     max-width: 88ch;
   }
-  .qc-folder-count {
-    font-size: 13px;
-    color: var(--t1);
-    font-weight: 600;
-    text-align: right;
-    padding-top: 1px;
-    letter-spacing: 0.01em;
-  }
   .qc-folder-updated {
     font-size: 11px;
     color: var(--t3);
@@ -937,26 +929,6 @@ const THEME_CSS = `
     margin-top: 4px;
     transition: color 0.15s ease, transform 0.15s ease;
   }
-  .qc-folder-meta-head {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 36px 72px 16px;
-    align-items: baseline;
-    gap: 28px;
-    padding: 0 14px 10px;
-    border-bottom: 1px solid var(--border-strong);
-    margin-bottom: 4px;
-  }
-  .qc-folder-meta-head > span {
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--t3);
-  }
-  .qc-folder-meta-head .qc-fmh-section { color: var(--t1); }
-  .qc-folder-meta-head .qc-fmh-count,
-  .qc-folder-meta-head .qc-fmh-date { text-align: right; }
-
   /* View toggle */
   .qc-view-toggle {
     display: inline-flex;
@@ -1008,7 +980,7 @@ const THEME_CSS = `
     font-family: inherit;
     transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
     box-shadow: none;
-    min-height: 196px;
+    min-height: 168px;
   }
   .qc-folder-card:hover {
     background: var(--hover);
@@ -1029,33 +1001,9 @@ const THEME_CSS = `
   }
   .qc-folder-card-top {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
-  }
-  .qc-folder-card-count-wrap {
-    display: flex;
-    align-items: baseline;
-    gap: 7px;
-  }
-  .qc-folder-card-count {
-    font-size: 24px;
-    font-weight: 600;
-    color: var(--t1);
-    letter-spacing: -0.02em;
-    line-height: 1;
-  }
-  .qc-folder-card-count-label {
-    font-size: 10px;
-    color: var(--t3);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-weight: 500;
-  }
-  .qc-folder-card-meta-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
   }
   .qc-folder-card-updated {
     font-size: 10px;
@@ -1089,6 +1037,249 @@ const THEME_CSS = `
     opacity: 0.7;
     align-self: flex-end;
     transition: color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+  }
+
+  /* Folder detail (sub-page replacing the modal) */
+  .qc-folder-detail { padding-top: 4px; }
+  .qc-folder-detail-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    padding: 6px 8px;
+    margin: 0 0 18px -8px;
+    color: var(--t2);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: color 0.12s ease, background-color 0.12s ease;
+  }
+  .qc-folder-detail-back:hover { color: var(--t1); background: var(--hover); }
+  .qc-folder-detail-header {
+    padding-bottom: 22px;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--border-strong);
+  }
+  .qc-folder-detail-tags {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .qc-folder-detail-title {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--t1);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin: 0 0 10px;
+  }
+  .qc-folder-detail-narrative {
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--t2);
+    margin: 0;
+    max-width: 78ch;
+  }
+  .qc-folder-detail-body {
+    display: grid;
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    overflow: hidden;
+    min-height: 560px;
+  }
+  .qc-folder-detail-list {
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+    max-height: 720px;
+    overflow-y: auto;
+  }
+  .qc-folder-detail-list-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--t3);
+  }
+  .qc-folder-detail-list-item {
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 18px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background-color 0.12s ease;
+    position: relative;
+  }
+  .qc-folder-detail-list-item:last-child { border-bottom: none; }
+  .qc-folder-detail-list-item:hover { background: var(--hover); }
+  .qc-folder-detail-list-item.is-active {
+    background: var(--surface-2);
+  }
+  .qc-folder-detail-list-item.is-active::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 10px; bottom: 10px;
+    width: 2px;
+    background: var(--ink);
+    border-radius: 1px;
+  }
+  .qc-folder-detail-list-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .qc-folder-detail-list-item.is-active .qc-folder-detail-list-icon {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
+  }
+  .qc-folder-detail-list-text { min-width: 0; flex: 1; }
+  .qc-folder-detail-list-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--t1);
+    line-height: 1.35;
+    margin-bottom: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .qc-folder-detail-list-meta {
+    font-size: 10.5px;
+    color: var(--t3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+  }
+  .qc-folder-detail-preview {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface-2);
+    min-width: 0;
+  }
+  .qc-folder-detail-preview-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+  .qc-folder-detail-preview-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--t1);
+    line-height: 1.3;
+    margin-bottom: 2px;
+  }
+  .qc-folder-detail-preview-meta {
+    font-size: 10.5px;
+    color: var(--t3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+  }
+  .qc-folder-detail-preview-frame {
+    flex: 1;
+    padding: 28px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow-y: auto;
+  }
+  .qc-doc-page {
+    width: 100%;
+    max-width: 620px;
+    background: #fdfdfb;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 56px 64px 64px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+    color: #2a2a28;
+    aspect-ratio: 8.5 / 11;
+    display: flex;
+    flex-direction: column;
+  }
+  .qc-doc-page-header {
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 9.5px;
+    font-weight: 600;
+    color: #8a8a85;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #e5e3dc;
+    margin-bottom: 28px;
+  }
+  .qc-doc-page-title {
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    margin: 0 0 8px;
+    color: #1a1a18;
+  }
+  .qc-doc-page-date {
+    font-size: 11px;
+    color: #8a8a85;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 500;
+    margin-bottom: 28px;
+  }
+  .qc-doc-page-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .qc-doc-page-line {
+    height: 8px;
+    background: #ece9e0;
+    border-radius: 2px;
+  }
+  .qc-doc-page-line.short { width: 62%; }
+  .qc-doc-page-line.med { width: 84%; }
+  .qc-doc-page-gap { height: 18px; }
+  .qc-doc-page-foot {
+    margin-top: auto;
+    padding-top: 18px;
+    border-top: 1px solid #e5e3dc;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 9px;
+    color: #b0aea7;
+    display: flex;
+    justify-content: space-between;
+    font-weight: 500;
   }
 
   /* Maintenance form */
@@ -1527,18 +1718,17 @@ const THEME_CSS = `
     .qc-top-tab-label { font-size: 16px !important; }
   }
   @media (max-width: 720px) {
-    .qc-folder-row,
-    .qc-folder-meta-head {
+    .qc-folder-row {
       grid-template-columns: minmax(0, 1fr) auto !important;
       gap: 16px !important;
     }
-    .qc-folder-count,
-    .qc-fmh-count,
     .qc-folder-arrow { display: none !important; }
     .qc-folder-narrative { max-width: 100%; }
     .qc-folder-grid { grid-template-columns: 1fr !important; }
     .qc-cal-day { min-height: 70px !important; }
     .qc-cal-event-title { font-size: 10px !important; }
+    .qc-folder-detail-body { grid-template-columns: 1fr !important; }
+    .qc-folder-detail-list { max-height: none !important; border-right: none !important; border-bottom: 1px solid var(--border) !important; }
   }
 `;
 
@@ -3001,7 +3191,6 @@ function FolderRow({ folder, onClick, isActive, showScope = false }) {
         </h3>
         <p className="qc-folder-narrative">{folder.narrative}</p>
       </div>
-      <div className="qc-folder-count qc-num">{pad2(folder.files.length)}</div>
       <div className="qc-folder-updated qc-num">{formatTableDate(lastUpdated(folder))}</div>
       <ChevronRight size={14} strokeWidth={1.75} className="qc-folder-arrow" />
     </button>
@@ -3020,29 +3209,19 @@ function FolderCard({ folder, onClick, isActive, showScope = false }) {
       aria-label={folder.name}
     >
       <div className="qc-folder-card-top">
-        <div className="qc-folder-card-count-wrap">
-          <span className="qc-folder-card-count qc-num">
-            {pad2(folder.files.length)}
-          </span>
-          <span className="qc-folder-card-count-label">
-            {folder.files.length === 1 ? "file" : "files"}
-          </span>
-        </div>
-        <div className="qc-folder-card-meta-right">
-          {showScope && (
-            folder.scope === "board" ? (
-              <span className="qc-tag">
-                <Lock size={9} strokeWidth={2.25} />
-                Board
-              </span>
-            ) : (
-              <span className="qc-tag-outline">All</span>
-            )
-          )}
-          <span className="qc-folder-card-updated qc-num">
-            {formatTableDate(lastUpdated(folder))}
-          </span>
-        </div>
+        <span className="qc-folder-card-updated qc-num">
+          {formatTableDate(lastUpdated(folder))}
+        </span>
+        {showScope && (
+          folder.scope === "board" ? (
+            <span className="qc-tag">
+              <Lock size={9} strokeWidth={2.25} />
+              Board
+            </span>
+          ) : (
+            <span className="qc-tag-outline">All</span>
+          )
+        )}
       </div>
       <h3 className="qc-folder-card-title">{folder.name}</h3>
       <p className="qc-folder-card-narrative">{folder.narrative}</p>
@@ -3283,187 +3462,139 @@ function CollapsibleGroup({ numeral, label, sublabel, count, defaultOpen = true,
 }
 
 // ─────────────────────────────────────────────────────────────────
-//  MODAL — FOLDER DETAIL
+//  FOLDER DETAIL — inline sub-page with side rail + preview
 // ─────────────────────────────────────────────────────────────────
 
-function FolderModal({ folder, onClose }) {
+function FolderDetailPane({ folder, onBack }) {
+  const sortedFiles = useMemo(
+    () =>
+      [...folder.files].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      ),
+    [folder]
+  );
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const selected = sortedFiles[selectedIndex] || sortedFiles[0];
+
   useEffect(() => {
     function handleEscape(e) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onBack();
     }
     document.addEventListener("keydown", handleEscape);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-      document.body.style.overflow = "";
-    };
-  }, [onClose]);
-
-  if (!folder) return null;
-
-  const sortedFiles = [...folder.files].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [onBack]);
 
   return (
-    <div className="qc-modal-overlay" onClick={onClose}>
-      <div
-        className="qc-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="qc-modal-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between"
-          style={{
-            padding: "16px 24px",
-            borderBottom: "1px solid var(--border)",
-            flexShrink: 0,
-            background: "var(--bg)",
-          }}
-        >
-          <div className="flex items-center" style={{ gap: 10 }}>
-            {folder.scope === "board" ? (
-              <span className="qc-tag">
-                <Lock size={9} strokeWidth={2.25} />
-                Board only
-              </span>
-            ) : (
-              <span className="qc-tag-outline">All residents</span>
-            )}
-            <span className="qc-caps-sm qc-num" style={{ color: "var(--t3)" }}>
-              {folder.files.length} {folder.files.length === 1 ? "document" : "documents"}
+    <section className="qc-folder-detail qc-fade-in">
+      <button onClick={onBack} className="qc-folder-detail-back" type="button">
+        <ChevronLeft size={13} strokeWidth={2} />
+        All sections
+      </button>
+
+      <header className="qc-folder-detail-header">
+        <div className="qc-folder-detail-tags">
+          {folder.scope === "board" ? (
+            <span className="qc-tag">
+              <Lock size={9} strokeWidth={2.25} />
+              Board only
             </span>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              color: "var(--t2)",
-              padding: 4,
-              display: "flex",
-              alignItems: "center",
-              borderRadius: 4,
-            }}
-          >
-            <X size={16} strokeWidth={1.75} />
-          </button>
+          ) : (
+            <span className="qc-tag-outline">All residents</span>
+          )}
+          <span className="qc-caps-sm qc-num" style={{ color: "var(--t3)" }}>
+            Latest {formatDateShort(lastUpdated(folder))}
+          </span>
         </div>
+        <h2 className="qc-folder-detail-title">{folder.name}</h2>
+        <p className="qc-folder-detail-narrative">{folder.narrative}</p>
+      </header>
 
-        {/* Body */}
-        <div className="qc-modal-body" style={{ padding: "26px 28px 28px", flex: 1 }}>
-          <h2
-            id="qc-modal-title"
-            style={{
-              fontSize: 24,
-              fontWeight: 600,
-              lineHeight: 1.2,
-              color: "var(--t1)",
-              letterSpacing: "-0.02em",
-              marginBottom: 12,
-              marginTop: 0,
-            }}
-          >
-            {folder.name}
-          </h2>
-
-          <p
-            style={{
-              fontSize: 14,
-              lineHeight: 1.6,
-              color: "var(--t2)",
-              marginBottom: 24,
-              fontWeight: 400,
-            }}
-          >
-            {folder.narrative}
-          </p>
-
-          <div
-            className="flex items-center justify-between"
-            style={{
-              paddingBottom: 8,
-              borderBottom: "1px solid var(--border-strong)",
-              marginBottom: 4,
-            }}
-          >
-            <span className="qc-caps" style={{ color: "var(--t1)", fontWeight: 600 }}>
-              Documents
-            </span>
-            <span className="qc-caps-sm qc-num" style={{ color: "var(--t3)" }}>
-              Latest {formatDateShort(lastUpdated(folder))}
-            </span>
+      <div className="qc-folder-detail-body">
+        <aside className="qc-folder-detail-list" role="listbox" aria-label="Documents in this section">
+          <div className="qc-folder-detail-list-head">
+            <span>Documents</span>
+            <span className="qc-num">{pad2(sortedFiles.length)}</span>
           </div>
+          {sortedFiles.map((f, i) => {
+            const isActive = i === selectedIndex;
+            return (
+              <button
+                key={i}
+                type="button"
+                role="option"
+                aria-selected={isActive}
+                onClick={() => setSelectedIndex(i)}
+                className={`qc-folder-detail-list-item${isActive ? " is-active" : ""}`}
+              >
+                <span className="qc-folder-detail-list-icon">
+                  <FileText size={13} strokeWidth={1.6} />
+                </span>
+                <span className="qc-folder-detail-list-text">
+                  <span className="qc-folder-detail-list-name">
+                    {f.name.replace(/\.pdf$/, "")}
+                  </span>
+                  <span className="qc-folder-detail-list-meta qc-num">
+                    {formatDateShort(f.date)} · {f.size}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </aside>
 
-          <div>
-            {sortedFiles.map((file, i) => (
-              <ModalFileRow key={i} file={file} isLast={i === sortedFiles.length - 1} />
-            ))}
+        <div className="qc-folder-detail-preview">
+          <div className="qc-folder-detail-preview-head">
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div className="qc-folder-detail-preview-name">
+                {selected.name.replace(/\.pdf$/, "")}
+              </div>
+              <div className="qc-folder-detail-preview-meta qc-num">
+                PDF · {formatDateShort(selected.date)} · {selected.size}
+              </div>
+            </div>
+            <button className="qc-btn qc-btn-primary" type="button" style={{ flexShrink: 0 }}>
+              <Download size={11} strokeWidth={2} />
+              Download
+            </button>
+          </div>
+          <div className="qc-folder-detail-preview-frame">
+            <DocPagePreview file={selected} folder={folder} />
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
-function ModalFileRow({ file, isLast }) {
+function DocPagePreview({ file, folder }) {
   return (
-    <div
-      className="qc-row flex items-center"
-      style={{
-        padding: "14px 8px",
-        borderBottom: isLast ? "none" : "1px solid var(--border)",
-        gap: 14,
-        margin: "0 -8px",
-        borderRadius: 6,
-      }}
-    >
-      <div
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: 6,
-          background: "var(--surface-2)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-        }}
-      >
-        <FileText size={14} strokeWidth={1.5} style={{ color: "var(--t2)" }} />
+    <article className="qc-doc-page" aria-label="Document preview">
+      <div className="qc-doc-page-header">
+        {PROPERTY.name} · {folder.name}
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 13,
-            color: "var(--t1)",
-            fontWeight: 500,
-            lineHeight: 1.3,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            marginBottom: 3,
-          }}
-        >
-          {file.name.replace(/\.pdf$/, "")}
-        </div>
-        <div
-          className="qc-caps-sm qc-num"
-          style={{ color: "var(--t3)", fontWeight: 500 }}
-        >
-          {formatDateShort(file.date)} · {file.size}
-        </div>
+      <h3 className="qc-doc-page-title">{file.name.replace(/\.pdf$/, "")}</h3>
+      <div className="qc-doc-page-date qc-num">
+        {formatDateShort(file.date)} · {file.size}
       </div>
-      <button className="qc-btn qc-btn-primary" style={{ flexShrink: 0 }}>
-        <Download size={11} strokeWidth={2} />
-        Download
-      </button>
-    </div>
+      <div className="qc-doc-page-lines" aria-hidden="true">
+        <div className="qc-doc-page-line" />
+        <div className="qc-doc-page-line med" />
+        <div className="qc-doc-page-line short" />
+        <div className="qc-doc-page-gap" />
+        <div className="qc-doc-page-line" />
+        <div className="qc-doc-page-line" />
+        <div className="qc-doc-page-line med" />
+        <div className="qc-doc-page-line short" />
+        <div className="qc-doc-page-gap" />
+        <div className="qc-doc-page-line med" />
+        <div className="qc-doc-page-line" />
+        <div className="qc-doc-page-line short" />
+      </div>
+      <div className="qc-doc-page-foot qc-num">
+        <span>{PROPERTY.name}</span>
+        <span>Page 1</span>
+      </div>
+    </article>
   );
 }
 
@@ -3542,6 +3673,13 @@ function DocumentsPane({ openFolderId, setOpenFolderId, view, boardMode, onUnloc
   const searchableFolders = boardMode
     ? FOLDERS
     : FOLDERS.filter((f) => f.scope !== "board");
+
+  const openFolder = openFolderId ? FOLDERS.find((f) => f.id === openFolderId) : null;
+  if (openFolder) {
+    return (
+      <FolderDetailPane folder={openFolder} onBack={() => setOpenFolderId(null)} />
+    );
+  }
 
   return (
     <section>
@@ -3933,7 +4071,6 @@ export default function QueensCourtPortal() {
   const [docsView, setDocsView] = useState("grid");   // 'list' | 'grid'
   const [boardMode, setBoardMode] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
-  const openFolder = openFolderId ? FOLDERS.find((f) => f.id === openFolderId) : null;
 
   // Check resident-auth state on mount; respect 7-day expiry.
   useEffect(() => {
@@ -4042,10 +4179,6 @@ export default function QueensCourtPortal() {
         {topView === "architectural" && <ArchitecturalSection />}
         {topView === "contact" && <ContactSection />}
       </div>
-
-      {openFolder && (
-        <FolderModal folder={openFolder} onClose={() => setOpenFolderId(null)} />
-      )}
 
       {showUnlockModal && (
         <UnlockBoardModal
