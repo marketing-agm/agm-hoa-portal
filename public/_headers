@@ -1,0 +1,8 @@
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# IMPORTANT: X-Frame-Options is intentionally NOT set here.
+# Setting it to SAMEORIGIN would prevent the portal from being
+# embedded as an iframe on the AGM website.
