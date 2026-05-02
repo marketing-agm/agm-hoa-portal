@@ -662,28 +662,31 @@ const THEME_CSS = `
   .qc-top-tab {
     border: none;
     background: transparent;
-    padding: 14px 0 16px;
-    margin-right: 36px;
+    padding: 10px 14px 12px;
+    margin-right: 32px;
     cursor: pointer;
     text-align: left;
     font-family: inherit;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    transition: border-color 0.18s ease;
+    border-radius: 10px;
+    transition: background-color 0.18s ease;
     position: relative;
   }
+  .qc-top-tab:first-child { margin-left: -14px; }
   .qc-top-tab:last-child { margin-right: 0; }
+  .qc-top-tab:hover {
+    background: var(--surface-2);
+  }
   .qc-top-tab:hover .qc-top-tab-label {
     color: var(--t2);
   }
   .qc-top-tab.is-active {
-    border-bottom-color: var(--ink);
+    background: var(--surface-2);
   }
   .qc-top-tab-label {
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 600;
     color: var(--t4);
-    letter-spacing: -0.022em;
+    letter-spacing: -0.018em;
     line-height: 1.1;
     transition: color 0.18s ease;
   }
@@ -692,7 +695,7 @@ const THEME_CSS = `
     color: var(--t1);
   }
   .qc-top-tab-meta {
-    font-size: 10.5px;
+    font-size: 10px;
     color: var(--t3);
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -1520,8 +1523,8 @@ const THEME_CSS = `
     .qc-cal-weekday { padding: 8px 6px !important; font-size: 9px !important; }
     .qc-top-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .qc-top-tabs::-webkit-scrollbar { display: none; }
-    .qc-top-tab { margin-right: 36px !important; }
-    .qc-top-tab-label { font-size: 18px !important; }
+    .qc-top-tab { margin-right: 24px !important; }
+    .qc-top-tab-label { font-size: 16px !important; }
   }
   @media (max-width: 720px) {
     .qc-folder-row,
