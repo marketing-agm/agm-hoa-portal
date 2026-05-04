@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Search,
   Download,
@@ -23,6 +23,7 @@ import {
   Copy,
   Check,
   Send,
+  Info,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────
@@ -1395,7 +1396,7 @@ const THEME_CSS = `
   }
 
   .qc-form-field {
-    margin-bottom: 28px;
+    margin-bottom: 32px;
   }
   .qc-form-label {
     display: block;
@@ -1403,7 +1404,7 @@ const THEME_CSS = `
     font-weight: 600;
     color: var(--t1);
     letter-spacing: -0.005em;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     line-height: 1.3;
   }
   .qc-input,
@@ -1412,7 +1413,7 @@ const THEME_CSS = `
     background: transparent;
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 12px 14px;
+    padding: 14px 16px;
     font-family: inherit;
     font-size: 13.5px;
     color: var(--t1);
@@ -1434,7 +1435,7 @@ const THEME_CSS = `
   }
   .qc-textarea {
     resize: vertical;
-    min-height: 96px;
+    min-height: 128px;
     line-height: 1.55;
   }
 
@@ -1442,20 +1443,22 @@ const THEME_CSS = `
   .qc-chip-group {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 10px;
+    gap: 12px;
   }
   .qc-chip {
     background: transparent;
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px 14px;
+    border-radius: 10px;
+    padding: 18px 20px;
     cursor: pointer;
     font-family: inherit;
     text-align: left;
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    transition: background-color 0.15s ease, border-color 0.15s ease;
+    gap: 5px;
+    min-height: 68px;
+    justify-content: center;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   }
   .qc-chip:hover {
     background: var(--hover);
@@ -1464,49 +1467,109 @@ const THEME_CSS = `
   .qc-chip.is-active {
     background: var(--hover);
     border-color: var(--ink);
+    box-shadow: 0 0 0 1px var(--ink);
   }
   .qc-chip-label {
-    font-size: 13.5px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--t1);
     letter-spacing: -0.005em;
-    line-height: 1.25;
+    line-height: 1.3;
   }
   .qc-chip-sub {
-    font-size: 11.5px;
+    font-size: 12px;
     color: var(--t3);
     font-weight: 400;
-    line-height: 1.3;
+    line-height: 1.4;
   }
 
   /* Generated message preview */
   .qc-preview {
     background: var(--surface-2);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 22px 24px;
+    border-radius: 12px;
+    padding: 28px 30px 30px;
     margin-top: 12px;
   }
   .qc-preview-head {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    padding-bottom: 12px;
+    padding-bottom: 16px;
     border-bottom: 1px solid var(--border);
-    margin-bottom: 14px;
+    margin-bottom: 20px;
     gap: 12px;
   }
   .qc-preview-body {
     font-family: inherit;
-    font-size: 13.5px;
-    line-height: 1.6;
+    font-size: 14px;
+    line-height: 1.65;
     color: var(--t1);
     white-space: pre-wrap;
-    min-height: 56px;
+    min-height: 140px;
   }
   .qc-preview-empty {
     color: var(--t3);
     font-weight: 400;
+  }
+
+  /* Inline help popover (replaces the long intro paragraphs) */
+  .qc-help-pop {
+    position: relative;
+    margin-top: 14px;
+  }
+  .qc-help-pop-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 7px 14px 7px 12px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--t2);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  .qc-help-pop-trigger:hover,
+  .qc-help-pop.is-open .qc-help-pop-trigger {
+    background: var(--hover);
+    border-color: var(--border-mid);
+    color: var(--t1);
+  }
+  .qc-help-pop-caret {
+    transition: transform 0.15s ease;
+    color: var(--t3);
+  }
+  .qc-help-pop.is-open .qc-help-pop-caret {
+    transform: rotate(180deg);
+    color: var(--t2);
+  }
+  .qc-help-pop-panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 22px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+    z-index: 20;
+    animation: qcHelpPopIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .qc-help-pop-panel p {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--t2);
+    margin: 0 0 10px;
+  }
+  .qc-help-pop-panel p:last-child { margin-bottom: 0; }
+  @keyframes qcHelpPopIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   /* Email preview rows (inside qc-preview) */
@@ -2291,6 +2354,57 @@ function StepNav({ currentStep, totalSteps, onPrev, onNext }) {
   );
 }
 
+function HelpPopover({ label = "About this form", children }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointer(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    }
+    function handleKey(e) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
+  return (
+    <div
+      className={`qc-help-pop${open ? " is-open" : ""}`}
+      ref={wrapRef}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        className="qc-help-pop-trigger"
+        onClick={() => setOpen((o) => !o)}
+        onFocus={() => setOpen(true)}
+        aria-expanded={open}
+      >
+        <Info size={12} strokeWidth={1.75} />
+        {label}
+        <ChevronDown
+          size={11}
+          strokeWidth={2}
+          className="qc-help-pop-caret"
+        />
+      </button>
+      {open && (
+        <div className="qc-help-pop-panel" role="dialog" aria-label={label}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MaintenanceSection() {
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
@@ -2337,34 +2451,6 @@ function MaintenanceSection() {
     <section style={{ marginBottom: 56 }}>
       <div className="qc-form-grid">
         <div className="qc-form-fields">
-          <p
-            style={{
-              fontSize: 14,
-              color: "var(--t2)",
-              lineHeight: 1.6,
-              fontWeight: 400,
-              margin: "0 0 14px",
-            }}
-          >
-            AGM handles maintenance for the building — leaks, lighting, doors,
-            lobbies, roof, grounds. They cannot help with what's inside your
-            unit; that's your responsibility, or your landlord's. For unit
-            modifications, use Architectural Reviews; for emergencies, call 911.
-          </p>
-          <p
-            style={{
-              fontSize: 14,
-              color: "var(--t2)",
-              lineHeight: 1.6,
-              fontWeight: 400,
-              margin: "0 0 32px",
-            }}
-          >
-            Use this form to draft a clear, structured request. Once you've
-            made a few selections, copy the generated message and paste it into
-            AppFolio's maintenance form.
-          </p>
-
           <Stepper steps={STEPS} currentStep={step} onStepClick={setStep} />
 
           {step === 0 && (
@@ -2509,6 +2595,20 @@ function MaintenanceSection() {
               Paste your message into the "Tell us what's going on" field. AGM will
               follow up by email or phone, usually within one business day.
             </p>
+
+            <HelpPopover label="What is this form for?">
+              <p>
+                AGM handles maintenance for the building — leaks, lighting, doors,
+                lobbies, roof, grounds. They cannot help with what's inside your
+                unit; that's your responsibility, or your landlord's. For unit
+                modifications, use Architectural Reviews; for emergencies, call 911.
+              </p>
+              <p>
+                Use this form to draft a clear, structured request. Once you've
+                made a few selections, copy the generated message and paste it into
+                AppFolio's maintenance form.
+              </p>
+            </HelpPopover>
           </div>
         </div>
       </div>
@@ -2581,35 +2681,6 @@ function ArchitecturalSection() {
     <section style={{ marginBottom: 56 }}>
       <div className="qc-form-grid">
         <div className="qc-form-fields">
-          <p
-            style={{
-              fontSize: 14,
-              color: "var(--t2)",
-              lineHeight: 1.6,
-              fontWeight: 400,
-              margin: "0 0 14px",
-            }}
-          >
-            The Architectural Review Committee approves modifications that
-            affect the building's structure, systems, or appearance — flooring,
-            exterior changes, plumbing or electrical work. They meet monthly to
-            review submissions; complete requests get faster decisions.
-          </p>
-          <p
-            style={{
-              fontSize: 14,
-              color: "var(--t2)",
-              lineHeight: 1.6,
-              fontWeight: 400,
-              margin: "0 0 32px",
-            }}
-          >
-            What doesn't need review: paint inside your unit, furniture,
-            removable décor, appliances using existing connections. When in
-            doubt, ask before you start — undoing unauthorized work costs more
-            than getting approval.
-          </p>
-
           <Stepper steps={STEPS} currentStep={step} onStepClick={setStep} />
 
           {step === 0 && (
@@ -2802,6 +2873,22 @@ function ArchitecturalSection() {
               supporting documents. The committee will respond after their next
               monthly meeting — see the Calendar tab for upcoming sessions.
             </p>
+
+            <HelpPopover label="What is this form for?">
+              <p>
+                The Architectural Review Committee approves modifications that
+                affect the building's structure, systems, or appearance —
+                flooring, exterior changes, plumbing or electrical work. They
+                meet monthly to review submissions; complete requests get
+                faster decisions.
+              </p>
+              <p>
+                What doesn't need review: paint inside your unit, furniture,
+                removable décor, appliances using existing connections. When in
+                doubt, ask before you start — undoing unauthorized work costs
+                more than getting approval.
+              </p>
+            </HelpPopover>
           </div>
         </div>
       </div>
