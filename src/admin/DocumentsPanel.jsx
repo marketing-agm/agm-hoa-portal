@@ -92,11 +92,33 @@ export default function DocumentsPanel({ slug }) {
 
   const setF = (k) => (e) => setFolderForm((f) => ({ ...f, [k]: e.target.value }));
 
+  const seedDefaults = async () => {
+    setBusy(true); setError("");
+    try {
+      const res = await apiPost(`/api/hoas/${slug}/folders/seed`, {});
+      await load();
+      if (res.inserted === 0) {
+        alert("All default folders are already present.");
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Documents</h2>
-        {!editingFolder && <button className="a-btn a-btn-primary" onClick={startNewFolder}>+ New folder</button>}
+        {!editingFolder && (
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="a-btn" onClick={seedDefaults} disabled={busy}>
+              Seed default folders
+            </button>
+            <button className="a-btn a-btn-primary" onClick={startNewFolder}>+ New folder</button>
+          </div>
+        )}
       </div>
 
       {editingFolder && (

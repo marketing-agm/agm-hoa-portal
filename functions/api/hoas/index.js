@@ -1,6 +1,7 @@
 import { requireAdmin, sha256Hex } from "../../_lib/auth.js";
 import { json, badRequest, unauthorized, SLUG_RE } from "../../_lib/http.js";
 import { listHoas, getHoaBySlug, publicHoa } from "../../_lib/db.js";
+import { seedFoldersForHoa } from "../../_lib/folderTemplate.js";
 
 export async function onRequestGet({ request, env }) {
   const isAdmin = await requireAdmin(request, env);
@@ -75,6 +76,10 @@ export async function onRequestPost({ request, env }) {
       boardHash
     )
     .run();
+
+  // Seed the canonical folder set so admins don't have to create them manually
+  // for every new building. They can still edit/delete or add more.
+  await seedFoldersForHoa(env, id);
 
   const created = await getHoaBySlug(env, id);
   return json({ hoa: publicHoa(created) }, { status: 201 });
