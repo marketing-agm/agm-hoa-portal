@@ -1073,12 +1073,11 @@ const THEME_CSS = `
     gap: 12px;
   }
   .qc-folder-detail-header {
-    padding-bottom: 12px;
+    padding-bottom: 16px;
     margin-bottom: 14px;
-    border-bottom: 1px solid var(--border-strong);
     display: flex;
     align-items: baseline;
-    gap: 16px;
+    gap: 20px;
     flex-wrap: wrap;
   }
   .qc-folder-detail-title {
@@ -1097,7 +1096,6 @@ const THEME_CSS = `
     margin: 0;
     flex: 1;
     min-width: 280px;
-    max-width: 72ch;
   }
   .qc-folder-detail-body {
     display: grid;
@@ -1233,11 +1231,11 @@ const THEME_CSS = `
   }
   .qc-doc-page {
     width: 100%;
-    max-width: 560px;
+    max-width: 720px;
     background: #fdfdfb;
     border: 1px solid var(--border);
     border-radius: 4px;
-    padding: 40px 52px 36px;
+    padding: 56px 72px 48px;
     box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
     color: #2a2a28;
     display: flex;
