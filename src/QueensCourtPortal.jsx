@@ -3490,20 +3490,18 @@ function DocumentPreview({ file, folder, hoaId }) {
   return <DocPlaceholder file={file} folder={folder} />;
 }
 
-// Renders the PDF with pdf.js into our own canvases. We can't lean on the
-// browser's built-in PDF viewer (<iframe src=...>) because it refuses to
-// render inside the deeply nested cross-site iframe Wix produces, even when
-// the bytes are loaded from a same-document blob: URL.
+// Renders the PDF in a native <iframe>, which gives the resident the
+// browser's built-in PDF toolbar (download, print, page nav, fit-to-width).
+// Some older / image-only PDFs fall back to a blank state in the viewer; we
+// probe each document with pdf.js first and swap to a "Preview unavailable"
+// message instead of the empty render in those cases.
 function PdfPreview({ url, title }) {
-  const containerRef = useRef(null);
-  const [status, setStatus] = useState("loading");
+  const [status, setStatus] = useState("checking");
 
   useEffect(() => {
     let cancelled = false;
-    let loadingTask = null;
     let pdfDoc = null;
-    setStatus("loading");
-    if (containerRef.current) containerRef.current.innerHTML = "";
+    setStatus("checking");
 
     (async () => {
       try {
@@ -3515,58 +3513,36 @@ function PdfPreview({ url, title }) {
         const buf = await res.arrayBuffer();
         if (cancelled) return;
 
-        loadingTask = pdfjsLib.getDocument({
+        pdfDoc = await pdfjsLib.getDocument({
           data: buf,
           cMapUrl: "/pdfjs/cmaps/",
           cMapPacked: true,
           standardFontDataUrl: "/pdfjs/standard_fonts/",
-        });
-        pdfDoc = await loadingTask.promise;
+        }).promise;
         if (cancelled) return;
 
-        const container = containerRef.current;
-        if (!container) return;
-        const containerWidth = container.clientWidth || 800;
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const page = await pdfDoc.getPage(1);
+        const viewport = page.getViewport({ scale: 1 });
+        const probe = document.createElement("canvas");
+        probe.width = Math.max(1, Math.floor(viewport.width));
+        probe.height = Math.max(1, Math.floor(viewport.height));
+        await page.render({
+          canvasContext: probe.getContext("2d"),
+          viewport,
+        }).promise;
+        if (cancelled) return;
 
-        for (let i = 1; i <= pdfDoc.numPages; i++) {
-          if (cancelled) return;
-          const page = await pdfDoc.getPage(i);
-          const baseViewport = page.getViewport({ scale: 1 });
-          const cssScale = Math.min(containerWidth / baseViewport.width, 2);
-          const viewport = page.getViewport({ scale: cssScale * dpr });
-
-          const canvas = document.createElement("canvas");
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          canvas.style.width = `${baseViewport.width * cssScale}px`;
-          canvas.style.height = `${baseViewport.height * cssScale}px`;
-          canvas.style.display = "block";
-          canvas.style.margin = i === 1 ? "0 auto" : "16px auto 0";
-          canvas.style.boxShadow = "0 1px 2px rgba(0,0,0,0.08)";
-          canvas.style.background = "#fff";
-
-          container.appendChild(canvas);
-          await page.render({
-            canvasContext: canvas.getContext("2d"),
-            viewport,
-          }).promise;
-        }
-
-        if (!cancelled) setStatus("ready");
+        setStatus(isCanvasBlank(probe) ? "unavailable" : "ok");
       } catch (err) {
         if (!cancelled) {
-          console.error("PDF preview failed", err);
-          setStatus("error");
+          console.warn("PDF preview probe failed", err);
+          setStatus("unavailable");
         }
       }
     })();
 
     return () => {
       cancelled = true;
-      if (loadingTask) {
-        try { loadingTask.destroy(); } catch {}
-      }
       if (pdfDoc) {
         try { pdfDoc.destroy(); } catch {}
       }
@@ -3577,57 +3553,76 @@ function PdfPreview({ url, title }) {
     width: "100%",
     height: "100%",
     minHeight: 600,
-    maxHeight: "calc(100vh - 220px)",
-    overflowY: "auto",
     border: "1px solid var(--border)",
     borderRadius: 4,
-    background: "#f4f3ee",
-    padding: 16,
-    boxSizing: "border-box",
+    background: "#fdfdfb",
   };
 
-  return (
-    <div style={{ position: "relative", width: "100%", height: "100%", minHeight: 600 }}>
-      <div ref={containerRef} title={title} style={frameStyle} />
-      {status === "loading" && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "grid",
-            placeItems: "center",
-            color: "var(--t3)",
-            fontSize: 13,
-            pointerEvents: "none",
-          }}
-        >
-          Loading preview…
-        </div>
-      )}
-      {status === "error" && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "grid",
-            placeItems: "center",
-            padding: 24,
-            color: "var(--t3)",
-            fontSize: 13,
-            textAlign: "center",
-          }}
-        >
-          <div>
-            Preview unavailable.{" "}
-            <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>
-              Open the PDF in a new tab
-            </a>{" "}
-            or use the Download button above.
+  if (status === "checking") {
+    return (
+      <div
+        style={{
+          ...frameStyle,
+          display: "grid",
+          placeItems: "center",
+          color: "var(--t3)",
+          fontSize: 13,
+        }}
+      >
+        Loading preview…
+      </div>
+    );
+  }
+
+  if (status === "unavailable") {
+    return (
+      <div
+        style={{
+          ...frameStyle,
+          display: "grid",
+          placeItems: "center",
+          padding: 32,
+          color: "var(--t3)",
+          fontSize: 13,
+          textAlign: "center",
+        }}
+      >
+        <div style={{ maxWidth: 360, lineHeight: 1.55 }}>
+          <div style={{ fontSize: 14, color: "var(--t1)", marginBottom: 8, fontWeight: 500 }}>
+            Preview unavailable
           </div>
+          This document is in an older format that the browser can't render
+          inline. Use the Download button above to open it in a new tab.
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  }
+
+  return <iframe src={url} title={title} style={frameStyle} />;
+}
+
+// Sample a grid of pixels; the probe canvas is "blank" if every sample is
+// near-white / fully transparent. Catches the case where pdf.js parses the
+// document but produces an empty render (older PDFs whose fonts or content
+// streams it can't process).
+function isCanvasBlank(canvas) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return true;
+  const w = canvas.width;
+  const h = canvas.height;
+  if (w === 0 || h === 0) return true;
+  const samples = 25;
+  for (let y = 0; y < samples; y++) {
+    for (let x = 0; x < samples; x++) {
+      const px = ctx.getImageData(
+        Math.min(w - 1, Math.floor((x + 0.5) * w / samples)),
+        Math.min(h - 1, Math.floor((y + 0.5) * h / samples)),
+        1, 1
+      ).data;
+      if (px[3] > 0 && (px[0] < 240 || px[1] < 240 || px[2] < 240)) return false;
+    }
+  }
+  return true;
 }
 
 function DocPlaceholder({ file, folder }) {
