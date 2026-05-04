@@ -2,6 +2,11 @@ name = "agm-hoa-portal"
 compatibility_date = "2025-01-15"
 pages_build_output_dir = "dist"
 
-# D1 (DB) and R2 (DOCS) bindings are configured in the Cloudflare Pages
-# dashboard under Settings → Bindings, not here. That way the database UUID
-# doesn't have to live in source.
+[[d1_databases]]
+binding = "DB"
+database_name = "hoa-portal"
+database_id = "97aa9eb9-ec55-4e30-9674-28698551e7cf"
+
+[[r2_buckets]]
+binding = "DOCS"
+bucket_name = "hoa-portal-docs"
