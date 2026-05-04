@@ -3424,10 +3424,10 @@ function FolderDetailPane({ folder, onBack }) {
             <div className="qc-folder-detail-preview-head">
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="qc-folder-detail-preview-name">
-                  {selected.name.replace(/\.pdf$/, "")}
+                  {selected.name.replace(/\.[^.]+$/, "")}
                 </div>
                 <div className="qc-folder-detail-preview-meta qc-num">
-                  PDF · {formatDateShort(selected.date)} · {selected.size}
+                  {(selected.name.match(/\.([^.]+)$/)?.[1] || "FILE").toUpperCase()} · {formatDateShort(selected.date)} · {selected.size}
                 </div>
               </div>
               <a
@@ -3440,7 +3440,7 @@ function FolderDetailPane({ folder, onBack }) {
               </a>
             </div>
             <div className="qc-folder-detail-preview-frame">
-              <DocPagePreview file={selected} folder={folder} />
+              <DocumentPreview file={selected} folder={folder} hoaId={hoaId} />
             </div>
           </div>
         ) : (
@@ -3453,34 +3453,57 @@ function FolderDetailPane({ folder, onBack }) {
   );
 }
 
-function DocPagePreview({ file, folder }) {
+function DocumentPreview({ file, folder, hoaId }) {
+  if (!file?.id) return <DocPlaceholder file={file} folder={folder} />;
+  const url = `/api/hoas/${hoaId}/documents/${file.id}`;
+  const lower = (file.name || "").toLowerCase();
+  const isPdf = lower.endsWith(".pdf");
+  const isImage = /\.(png|jpe?g|gif|webp|avif|svg)$/.test(lower);
+
+  if (isPdf) {
+    // Browsers render PDFs natively in iframes/embeds. Same-origin so no
+    // X-Frame-Options issue with our own resources.
+    return (
+      <iframe
+        src={url}
+        title={file.name}
+        style={{
+          width: "100%",
+          height: "100%",
+          minHeight: 600,
+          border: "1px solid var(--border)",
+          borderRadius: 4,
+          background: "#fdfdfb",
+        }}
+      />
+    );
+  }
+  if (isImage) {
+    return (
+      <img
+        src={url}
+        alt={file.name}
+        style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+      />
+    );
+  }
+  return <DocPlaceholder file={file} folder={folder} />;
+}
+
+function DocPlaceholder({ file, folder }) {
   const hoa = useHoa();
   return (
     <article className="qc-doc-page" aria-label="Document preview">
       <div className="qc-doc-page-header">
         {hoa.name} · {folder.name}
       </div>
-      <h3 className="qc-doc-page-title">{file.name.replace(/\.pdf$/, "")}</h3>
+      <h3 className="qc-doc-page-title">{file.name.replace(/\.[^.]+$/, "")}</h3>
       <div className="qc-doc-page-date qc-num">
         {formatDateShort(file.date)} · {file.size}
       </div>
-      <div className="qc-doc-page-lines" aria-hidden="true">
-        <div className="qc-doc-page-line" />
-        <div className="qc-doc-page-line med" />
-        <div className="qc-doc-page-line short" />
-        <div className="qc-doc-page-gap" />
-        <div className="qc-doc-page-line" />
-        <div className="qc-doc-page-line" />
-        <div className="qc-doc-page-line med" />
-        <div className="qc-doc-page-line short" />
-        <div className="qc-doc-page-gap" />
-        <div className="qc-doc-page-line med" />
-        <div className="qc-doc-page-line" />
-        <div className="qc-doc-page-line short" />
-      </div>
-      <div className="qc-doc-page-foot qc-num">
-        <span>{hoa.name}</span>
-        <span>Page 1</span>
+      <div style={{ marginTop: 24, fontSize: 13, color: "var(--t3)", lineHeight: 1.5 }}>
+        No inline preview available for this file type. Use the Download
+        button above to open it in a new tab.
       </div>
     </article>
   );
