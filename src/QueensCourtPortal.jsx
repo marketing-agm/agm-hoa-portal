@@ -28,21 +28,6 @@ import {
 import { HoaProvider, useHoa } from "./lib/hoaContext.jsx";
 import { apiGet, apiPost, apiDelete } from "./lib/api.js";
 import { shapeFolders, shapeEvent } from "./lib/format.js";
-
-let pdfjsPromise = null;
-function loadPdfJs() {
-  if (!pdfjsPromise) {
-    pdfjsPromise = (async () => {
-      const [pdfjs, workerUrl] = await Promise.all([
-        import("pdfjs-dist"),
-        import("pdfjs-dist/build/pdf.worker.min.mjs?url"),
-      ]);
-      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl.default;
-      return pdfjs;
-    })();
-  }
-  return pdfjsPromise;
-}
 import {
   generateMaintenanceMessage,
   generateArchitecturalMessage,
@@ -3490,139 +3475,21 @@ function DocumentPreview({ file, folder, hoaId }) {
   return <DocPlaceholder file={file} folder={folder} />;
 }
 
-// Renders the PDF in a native <iframe>, which gives the resident the
-// browser's built-in PDF toolbar (download, print, page nav, fit-to-width).
-// Some older / image-only PDFs fall back to a blank state in the viewer; we
-// probe each document with pdf.js first and swap to a "Preview unavailable"
-// message instead of the empty render in those cases.
 function PdfPreview({ url, title }) {
-  const [status, setStatus] = useState("checking");
-
-  useEffect(() => {
-    let cancelled = false;
-    let pdfDoc = null;
-    setStatus("checking");
-
-    (async () => {
-      try {
-        const [pdfjsLib, res] = await Promise.all([
-          loadPdfJs(),
-          fetch(url, { credentials: "same-origin" }),
-        ]);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const buf = await res.arrayBuffer();
-        if (cancelled) return;
-
-        pdfDoc = await pdfjsLib.getDocument({
-          data: buf,
-          cMapUrl: "/pdfjs/cmaps/",
-          cMapPacked: true,
-          standardFontDataUrl: "/pdfjs/standard_fonts/",
-        }).promise;
-        if (cancelled) return;
-
-        const page = await pdfDoc.getPage(1);
-        const viewport = page.getViewport({ scale: 1 });
-        const probe = document.createElement("canvas");
-        probe.width = Math.max(1, Math.floor(viewport.width));
-        probe.height = Math.max(1, Math.floor(viewport.height));
-        await page.render({
-          canvasContext: probe.getContext("2d"),
-          viewport,
-        }).promise;
-        if (cancelled) return;
-
-        setStatus(isCanvasBlank(probe) ? "unavailable" : "ok");
-      } catch (err) {
-        if (!cancelled) {
-          console.warn("PDF preview probe failed", err);
-          setStatus("unavailable");
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      if (pdfDoc) {
-        try { pdfDoc.destroy(); } catch {}
-      }
-    };
-  }, [url]);
-
-  const frameStyle = {
-    width: "100%",
-    height: "100%",
-    minHeight: 600,
-    border: "1px solid var(--border)",
-    borderRadius: 4,
-    background: "#fdfdfb",
-  };
-
-  if (status === "checking") {
-    return (
-      <div
-        style={{
-          ...frameStyle,
-          display: "grid",
-          placeItems: "center",
-          color: "var(--t3)",
-          fontSize: 13,
-        }}
-      >
-        Loading preview…
-      </div>
-    );
-  }
-
-  if (status === "unavailable") {
-    return (
-      <div
-        style={{
-          ...frameStyle,
-          display: "grid",
-          placeItems: "center",
-          padding: 32,
-          color: "var(--t3)",
-          fontSize: 13,
-          textAlign: "center",
-        }}
-      >
-        <div style={{ maxWidth: 360, lineHeight: 1.55 }}>
-          <div style={{ fontSize: 14, color: "var(--t1)", marginBottom: 8, fontWeight: 500 }}>
-            Preview unavailable
-          </div>
-          This document is in an older format that the browser can't render
-          inline. Use the Download button above to open it in a new tab.
-        </div>
-      </div>
-    );
-  }
-
-  return <iframe src={url} title={title} style={frameStyle} />;
-}
-
-// Sample a grid of pixels; the probe canvas is "blank" if every sample is
-// near-white / fully transparent. Catches the case where pdf.js parses the
-// document but produces an empty render (older PDFs whose fonts or content
-// streams it can't process).
-function isCanvasBlank(canvas) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return true;
-  const w = canvas.width;
-  const h = canvas.height;
-  if (w === 0 || h === 0) return true;
-  const samples = 25;
-  for (let y = 0; y < samples; y++) {
-    for (let x = 0; x < samples; x++) {
-      const px = ctx.getImageData(
-        Math.min(w - 1, Math.floor((x + 0.5) * w / samples)),
-        Math.min(h - 1, Math.floor((y + 0.5) * h / samples)),
-        1, 1
-      ).data;
-      if (px[3] > 0 && (px[0] < 240 || px[1] < 240 || px[2] < 240)) return false;
-    }
-  }
-  return true;
+  return (
+    <iframe
+      src={url}
+      title={title}
+      style={{
+        width: "100%",
+        height: "100%",
+        minHeight: 600,
+        border: "1px solid var(--border)",
+        borderRadius: 4,
+        background: "#fdfdfb",
+      }}
+    />
+  );
 }
 
 function DocPlaceholder({ file, folder }) {

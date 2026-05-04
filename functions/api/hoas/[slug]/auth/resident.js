@@ -33,8 +33,7 @@ export async function onRequestPost({ params, request, env }) {
       headers: {
         "Set-Cookie": setCookie(RESIDENT_COOKIE_PREFIX + slug, token, {
           maxAge: RESIDENT_TTL,
-          sameSite: "None",
-          partitioned: true,
+          sameSite: "Lax",
         }),
       },
     }
@@ -44,13 +43,6 @@ export async function onRequestPost({ params, request, env }) {
 export async function onRequestDelete({ params }) {
   return json(
     { ok: true },
-    {
-      headers: {
-        "Set-Cookie": clearCookie(RESIDENT_COOKIE_PREFIX + params.slug, {
-          sameSite: "None",
-          partitioned: true,
-        }),
-      },
-    }
+    { headers: { "Set-Cookie": clearCookie(RESIDENT_COOKIE_PREFIX + params.slug) } }
   );
 }
