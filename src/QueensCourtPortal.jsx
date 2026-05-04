@@ -3515,7 +3515,12 @@ function PdfPreview({ url, title }) {
         const buf = await res.arrayBuffer();
         if (cancelled) return;
 
-        loadingTask = pdfjsLib.getDocument({ data: buf });
+        loadingTask = pdfjsLib.getDocument({
+          data: buf,
+          cMapUrl: "/pdfjs/cmaps/",
+          cMapPacked: true,
+          standardFontDataUrl: "/pdfjs/standard_fonts/",
+        });
         pdfDoc = await loadingTask.promise;
         if (cancelled) return;
 
