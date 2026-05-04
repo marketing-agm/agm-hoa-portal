@@ -71,7 +71,11 @@ export function parseCookies(request) {
   return out;
 }
 
-export function setCookie(name, value, { maxAge, sameSite = "Lax", path = "/" } = {}) {
+export function setCookie(
+  name,
+  value,
+  { maxAge, sameSite = "Lax", path = "/", partitioned = false } = {}
+) {
   const parts = [
     `${name}=${encodeURIComponent(value)}`,
     `Path=${path}`,
@@ -80,11 +84,21 @@ export function setCookie(name, value, { maxAge, sameSite = "Lax", path = "/" } 
     `SameSite=${sameSite}`,
   ];
   if (maxAge) parts.push(`Max-Age=${maxAge}`);
+  if (partitioned) parts.push("Partitioned");
   return parts.join("; ");
 }
 
-export function clearCookie(name, { path = "/" } = {}) {
-  return `${name}=; Path=${path}; HttpOnly; Secure; Max-Age=0; SameSite=Lax`;
+export function clearCookie(name, { path = "/", sameSite = "Lax", partitioned = false } = {}) {
+  const parts = [
+    `${name}=`,
+    `Path=${path}`,
+    `HttpOnly`,
+    `Secure`,
+    `Max-Age=0`,
+    `SameSite=${sameSite}`,
+  ];
+  if (partitioned) parts.push("Partitioned");
+  return parts.join("; ");
 }
 
 export const ADMIN_COOKIE = "agmadmin";
