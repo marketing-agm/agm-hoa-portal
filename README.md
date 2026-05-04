@@ -1,60 +1,78 @@
-# Queens Court Resident Portal
+# AGM Multi-Tenant HOA Portal
 
-Single-page React app, built with Vite, designed to be deployed on Cloudflare Pages and embedded as an iframe on the AGM website.
+One Cloudflare Pages deployment that serves any number of HOAs at
+`/<hoa-slug>` (e.g. `/queenscourt`, `/oakridge`) plus a single admin console
+at `/admin` with a tenant switcher.
 
-## Local development 
+- **Resident UI** — splash login + documents/calendar/maintenance/architectural/contact tabs.
+  Iframe-embeddable on the AGM marketing site.
+- **Admin UI** — log in once, switch between any HOA from a dropdown, manage
+  events / documents / form submissions, create new HOAs.
+
+Stack: React + Vite (single bundle for both UIs), Cloudflare Pages Functions,
+D1 (SQLite), R2 (object storage), Resend (email).
+
+## Local development
 
 ```bash
 npm install
-npm run dev
+npx wrangler d1 create hoa-portal           # paste returned ID into wrangler.toml
+npx wrangler r2 bucket create hoa-portal-docs
+npm run db:init                             # apply schema.sql
+
+cat > .dev.vars <<'EOF'
+ADMIN_PASS_HASH=<sha256 hex of your admin password>
+SESSION_SECRET=<openssl rand -hex 32>
+RESEND_API_KEY=<optional — emails skipped if empty>
+RESEND_FROM=AGM HOA Portal <portal@agmrealestategroup.com>
+EOF
+
+# Generate the hash:
+echo -n 'your-admin-password' | shasum -a 256
+
+npm run pages:dev                           # serves at http://localhost:8788
 ```
 
-Opens at http://localhost:5173.
+Then visit:
 
-## Build for deployment
+- `http://localhost:8788/admin` — log in, click **+ New HOA**, create one (e.g.
+  slug `queenscourt`). Optionally upload a hero image and set passwords.
+- `http://localhost:8788/queenscourt` — enter the resident password you just set.
+
+## Production deploy
 
 ```bash
-npm install
-npm run build
+npx wrangler pages secret put ADMIN_PASS_HASH
+npx wrangler pages secret put SESSION_SECRET
+npx wrangler pages secret put RESEND_API_KEY     # optional
+npx wrangler pages secret put RESEND_FROM        # optional
+
+npm run db:init:remote
+git push origin main                              # Cloudflare Pages auto-deploys
 ```
-
-This produces a `dist/` folder. That folder is what you upload to Cloudflare Pages.
-
-## Manual deployment to Cloudflare Pages
-
-1. Run `npm install` and `npm run build` locally.
-2. In the Cloudflare dashboard, go to **Workers & Pages → Create → Pages → Upload assets**.
-3. Name the project (e.g., `queens-court-portal`).
-4. Drag the entire **`dist/` folder** into the upload area.
-5. Click **Deploy**. You'll get a URL like `queens-court-portal.pages.dev`.
 
 ## Embedding on the AGM website
 
 ```html
 <iframe
-  src="https://queens-court-portal.pages.dev"
-  width="100%"
-  height="900"
-  style="border: none;"
+  src="https://<your-domain>/queenscourt"
+  width="100%" height="900" style="border: none;"
   title="Queens Court Resident Portal"
 ></iframe>
 ```
 
-The `_headers` file in `public/` deliberately omits `X-Frame-Options` so iframe embedding works. Do not add it.
+`X-Frame-Options` is intentionally **not** set in `public/_headers` so the
+resident view can be iframe-embedded. The admin app frame-busts on mount.
 
-## Future: Git-based deployment
+## Architecture notes
 
-When you're ready to switch from manual upload to automatic builds on push:
-
-1. Push this folder to a GitHub repo.
-2. In Cloudflare Pages, **Settings → Builds & deployments → Connect to Git**.
-3. Set build command: `npm run build`
-4. Set build output directory: `dist`
-5. Set Node.js version: `18` (in environment variables, key `NODE_VERSION`)
-
-## Passwords (replace before launch)
-
-- Resident password (splash): `queenscourt`
-- Board password (Board Materials unlock): `queenscourt-board`
-
-Both are defined as constants in `src/QueensCourtPortal.jsx`. Search for `RESIDENT_PASSWORD` and `BOARD_PASSWORD`.
+- **Per-HOA data** lives in D1 with `hoa_id` foreign keys cascading from
+  `hoas`. Schema in `schema.sql`.
+- **Documents** are stored in R2 under keys `<hoa_id>/documents/<uuid>`.
+  Hero images at `_hoa_assets/<hoa_id>/hero.<ext>`.
+- **Auth** uses HMAC-signed cookies (`functions/_lib/auth.js`):
+  - Admin session — `__Host`-style, `SameSite=Strict`, 12h
+  - Resident — per-HOA, `SameSite=Lax` (works inside iframes), 7d
+  - Board — per-HOA, `SameSite=Lax`, 24h, requires resident first
+- **Admin password** is single — one login unlocks all HOAs.
+  Per-HOA admin permissions are out of scope for v1.

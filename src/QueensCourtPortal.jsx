@@ -25,22 +25,18 @@ import {
   Send,
   Info,
 } from "lucide-react";
+import { HoaProvider, useHoa } from "./lib/hoaContext.jsx";
+import { apiGet, apiPost, apiDelete } from "./lib/api.js";
+import { shapeFolders, shapeEvent } from "./lib/format.js";
+import {
+  generateMaintenanceMessage,
+  generateArchitecturalMessage,
+  generateContactEmail,
+} from "./shared/messages.js";
 
 // ─────────────────────────────────────────────────────────────────
-//  DATA
+//  STATIC FORM SCHEMAS (not tenant-specific — shape of the inputs)
 // ─────────────────────────────────────────────────────────────────
-
-const PROPERTY = {
-  name: "Queens Court",
-  fullName: "Queens Court Condominiums",
-  street: "124 Warren Ave N",
-  city: "Seattle, WA 98109",
-  era: "Lower Queen Anne · Est. 1931",
-};
-
-const APPFOLIO_BASE = "https://agmrealestategroup.appfolio.com/connect";
-const APPFOLIO_NEW_REQUEST = `${APPFOLIO_BASE}/online_work_orders/new`;
-const APPFOLIO_NEW_ARC = `${APPFOLIO_BASE}/architectural_reviews/new`;
 
 const MAINTENANCE_CATEGORIES = [
   { id: "plumbing", label: "Plumbing or water", sub: "Leaks, drainage, pressure" },
@@ -90,12 +86,6 @@ const ARC_DURATIONS = [
   { id: "over-month", label: "Over a month" },
 ];
 
-const CONTACT_RECIPIENTS = {
-  // Replace with real per-property addresses before launch.
-  board: { email: "board@queenscourt-hoa.com", label: "Queens Court Board" },
-  manager: { email: "manager@agmrealestategroup.com", label: "AGM Property Management" },
-};
-
 const CONTACT_CATEGORIES = [
   { id: "billing", label: "Billing & Assessments", sub: "Payments, dues, special assessments", recipient: "manager" },
   { id: "noise", label: "Noise or Nuisance", sub: "Disturbances, odors, disruptive behavior", recipient: "board" },
@@ -110,104 +100,6 @@ const CONTACT_REPLY_PREFS = [
   { id: "email", label: "Email" },
   { id: "phone", label: "Phone" },
   { id: "either", label: "Either is fine" },
-];
-
-const QUICK_LINKS = [
-  { id: "approvals", label: "Approvals", icon: CheckSquare, url: `${APPFOLIO_BASE}/approvals` },
-  { id: "maintenance", label: "Maintenance", icon: Wrench, url: `${APPFOLIO_BASE}/maintenance` },
-  { id: "insurance", label: "Insurance", icon: Shield, url: `${APPFOLIO_BASE}/insurance` },
-  { id: "architectural", label: "Architectural", icon: PencilRuler, url: `${APPFOLIO_BASE}/architectural_reviews` },
-  { id: "property", label: "Property Details", icon: Building2, url: `${APPFOLIO_BASE}/property_details` },
-  { id: "account", label: "Account", icon: UserCircle, url: `${APPFOLIO_BASE}/account_profile` },
-];
-
-const EVENTS = [
-  { id: "arc-may", title: "Architectural Review Committee", type: "Committee", date: "2026-05-05T18:00:00", duration: "1.5 hrs", location: "Building Library", scope: "all", note: "Three modification requests on the docket — flooring in 304, window replacement in 207, and a balcony screen in 412." },
-  { id: "walkthrough", title: "Quarterly Building Walk-Through", type: "Inspection", date: "2026-05-12T10:00:00", duration: "2 hrs", location: "Lobby", scope: "board", note: "Joined by James King for the roof follow-up; bring the November assessment report." },
-  { id: "bod-may", title: "Board of Directors Meeting", type: "Open Session", date: "2026-05-19T18:30:00", duration: "2 hrs", location: "Building Library", scope: "all", note: "Open session — homeowners welcome. Q1 financials and reserve study update on the agenda." },
-  { id: "reserve", title: "Reserve Funding Discussion", type: "Closed Session", date: "2026-05-26T19:00:00", duration: "1 hr", location: "Building Library", scope: "board" },
-  { id: "arc-jun", title: "Architectural Review Committee", type: "Committee", date: "2026-06-02T18:00:00", duration: "1 hr", location: "Building Library", scope: "all" },
-  { id: "bod-jun", title: "Board of Directors Meeting", type: "Open Session", date: "2026-06-16T18:30:00", duration: "2 hrs", location: "Building Library", scope: "all" },
-  { id: "budget", title: "Mid-Year Budget Review", type: "Closed Session", date: "2026-07-14T18:30:00", duration: "2 hrs", location: "Building Library", scope: "board" },
-  { id: "annual", title: "Annual Homeowner Meeting", type: "Community", date: "2026-11-18T18:30:00", duration: "2.5 hrs", location: "Bellevue Community Center, Room B", scope: "all", note: "Election of two board seats. Quorum is 30% of units — proxy forms will be mailed in October." },
-];
-
-const FOLDERS = [
-  { id: "board-packet", name: "Board Packet", scope: "board", narrative: "The dossier circulated before each monthly meeting — treasurer's report, manager's update, motions on the floor.", files: [
-    { name: "Queens Court — Board Packet — 2026.04.14.pdf", date: "2026-04-08", size: "2.4 MB" },
-    { name: "Queens Court — Board Packet — 2026.01.13.pdf", date: "2026-04-08", size: "2.1 MB" },
-    { name: "Queens Court — BOD Agenda — 2026.03.17.pdf", date: "2026-03-09", size: "486 KB" },
-  ]},
-  { id: "board-archive", name: "Board Packet — Archive", scope: "board", narrative: "Every packet from prior meetings, kept in case anyone asks what was decided last March.", files: [
-    { name: "Queens Court — Board Packet — 2025.10.21.pdf", date: "2025-10-15", size: "2.2 MB" },
-    { name: "Queens Court — Board Packet — 2025.07.15.pdf", date: "2025-07-09", size: "1.9 MB" },
-    { name: "Queens Court — Board Packet — 2025.04.18.pdf", date: "2025-04-12", size: "2.0 MB" },
-  ]},
-  { id: "financials", name: "Financials", scope: "board", narrative: "Monthly P&L, reserve activity, and delinquency report. The treasurer reviews each before distribution.", files: [
-    { name: "Queens Court — Financial Report — 2026.03.pdf", date: "2026-04-15", size: "1.7 MB" },
-    { name: "Queens Court — Financial Report — 2026.02.pdf", date: "2026-03-12", size: "1.6 MB" },
-    { name: "Queens Court — Financial Report — 2026.01.pdf", date: "2026-02-08", size: "1.6 MB" },
-  ]},
-  { id: "financial-archive", name: "Financial — Archive", scope: "board", narrative: "Past fiscal years, kept for audit and continuity.", files: [
-    { name: "Queens Court — Financial Report — 2025.12.pdf", date: "2026-01-10", size: "1.5 MB" },
-    { name: "Queens Court — Financial Report — 2025.11.pdf", date: "2025-12-08", size: "1.6 MB" },
-  ]},
-  { id: "budget", name: "Budget — Ratified", scope: "all", narrative: "The operating budget approved at the annual meeting. Dues for the year ahead are calculated against this.", files: [
-    { name: "Queens Court — Ratified Budget 2026.pdf", date: "2025-12-19", size: "812 KB" },
-    { name: "Queens Court — Ratified Budget 2025.pdf", date: "2024-12-15", size: "798 KB" },
-  ]},
-  { id: "communications", name: "Community Communications & Notices", scope: "all", narrative: "Anything formally announced to the building — newsletters, gate code changes, policy reminders.", files: [
-    { name: "Queens Court — Spring 2026 Newsletter.pdf", date: "2026-03-22", size: "1.2 MB" },
-    { name: "Queens Court — Garage Gate Code Change.pdf", date: "2026-02-14", size: "284 KB" },
-    { name: "Queens Court — Quiet Hours Reminder.pdf", date: "2025-11-03", size: "192 KB" },
-  ]},
-  { id: "homeowner-packet", name: "Financial — Homeowners Packet", scope: "all", narrative: "The resident-facing summary of monthly finances. Less detail than the board version, same numbers.", files: [
-    { name: "Queens Court — Homeowner Financial Packet — 2026.02.pdf", date: "2026-04-03", size: "984 KB" },
-    { name: "Queens Court — Homeowner Financial Packet — 2026.01.pdf", date: "2026-04-03", size: "962 KB" },
-  ]},
-  { id: "homeowner-archive", name: "Homeowners Packet — Archive", scope: "all", narrative: "Past resident financial summaries, year by year.", files: [
-    { name: "Queens Court — Homeowner Financial Packet — 2025.12.pdf", date: "2026-01-08", size: "918 KB" },
-  ]},
-  { id: "governing", name: "Governing Documents", scope: "all", narrative: "The constitution of Queens Court — CC&Rs, Bylaws, Articles, and Rules. Most disputes are settled by something in here.", files: [
-    { name: "Queens Court — Declaration of CC&Rs.pdf", date: "2024-06-12", size: "1.8 MB" },
-    { name: "Queens Court — Bylaws (Amended 2023).pdf", date: "2024-06-12", size: "742 KB" },
-    { name: "Queens Court — Articles of Incorporation.pdf", date: "2024-06-12", size: "412 KB" },
-    { name: "Queens Court — Rules and Regulations.pdf", date: "2025-02-11", size: "528 KB" },
-  ]},
-  { id: "inspections", name: "Inspections", scope: "all", narrative: "Independent assessments — roof, foundation, life-safety. Read these before any major capital decision.", files: [
-    { name: "Queens Court — James King — Roof Assessment Report — 2025.11.06.pdf", date: "2026-01-09", size: "3.4 MB" },
-  ]},
-  { id: "insurance", name: "Insurance", scope: "all", narrative: "Master policy and certificates. Lenders and prospective buyers ask for these constantly.", files: [
-    { name: "Queens Court — Certificate of Insurance — 2025.09.pdf", date: "2025-02-11", size: "284 KB" },
-  ]},
-  { id: "minutes-archive", name: "Meeting Minutes — Archive", scope: "all", narrative: "Years of building decisions, indexed by date. The single best record of what the board has actually done.", files: [
-    { name: "Queens Court — Meeting Minutes 2024-12-11 — BOD.pdf", date: "2025-01-09", size: "324 KB" },
-    { name: "Queens Court — Meeting Minutes 2024-09-18 — BOD.pdf", date: "2024-11-13", size: "298 KB" },
-    { name: "Queens Court — BOD Minutes 2024-08-28.pdf", date: "2024-11-13", size: "312 KB" },
-    { name: "Queens Court — Meeting Minutes 2024-07-10 — BOD.pdf", date: "2024-10-16", size: "306 KB" },
-    { name: "Queens Court — Meeting Minutes 2024-06-04 — BOD.pdf", date: "2024-10-16", size: "302 KB" },
-    { name: "Queens Court — Meeting Minutes 2024-05-15 — BOD.pdf", date: "2024-10-16", size: "294 KB" },
-    { name: "Queens Court — Meeting Minutes 2024-04-10 — BOD.pdf", date: "2024-10-16", size: "286 KB" },
-    { name: "Queens Court — Meeting Minutes 2024-01-24 — BOD.pdf", date: "2024-10-16", size: "278 KB" },
-  ]},
-  { id: "minutes-annual", name: "Minutes — Annual Meetings", scope: "all", narrative: "What was said and decided at each year's homeowner gathering — quorum, board elections, motions from the floor.", files: [
-    { name: "Queens Court — Annual Meeting Minutes 2025.pdf", date: "2025-11-22", size: "412 KB" },
-    { name: "Queens Court — Annual Meeting Minutes 2024.pdf", date: "2024-11-18", size: "398 KB" },
-  ]},
-  { id: "minutes-bod", name: "Minutes — Board of Directors", scope: "all", narrative: "Recent monthly board minutes. Open sessions only — closed-session minutes stay confidential.", files: [
-    { name: "Queens Court — BOD Minutes — 2026.03.17.pdf", date: "2026-04-02", size: "286 KB" },
-    { name: "Queens Court — BOD Minutes — 2026.02.10.pdf", date: "2026-02-24", size: "274 KB" },
-  ]},
-  { id: "minutes-bod-archive", name: "Minutes — BOD Archives", scope: "all", narrative: "Older board minutes, compiled by year for easier reference.", files: [
-    { name: "Queens Court — BOD Minutes — 2023 (Compiled).pdf", date: "2024-01-15", size: "1.8 MB" },
-  ]},
-  { id: "reserve-study", name: "Reserve Study", scope: "all", narrative: "The thirty-year forecast for major systems — roof, plumbing, exterior. Updated every five years.", files: [
-    { name: "Queens Court — Reserve Study 2025–2030.pdf", date: "2025-04-22", size: "4.2 MB" },
-  ]},
-  { id: "roof", name: "Roof Maintenance", scope: "all", narrative: "Care plan, repairs, and warranty for the roof — the building's single most expensive long-term asset.", files: [
-    { name: "Queens Court — Roof Maintenance Plan 2026.pdf", date: "2026-01-22", size: "612 KB" },
-    { name: "Queens Court — Roof Warranty Documentation.pdf", date: "2024-09-08", size: "428 KB" },
-  ]},
 ];
 
 // ─────────────────────────────────────────────────────────────────
@@ -239,98 +131,12 @@ function formatTime(iso) {
   return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 function lastUpdated(folder) {
+  if (!folder.files || folder.files.length === 0) return new Date(0).toISOString();
   const dates = folder.files.map((f) => new Date(f.date).getTime());
   return new Date(Math.max(...dates)).toISOString();
 }
 function pad2(n) {
   return String(n).padStart(2, "0");
-}
-
-function generateMaintenanceMessage({
-  categoryLabel,
-  location,
-  durationLabel,
-  urgencyLabel,
-  details,
-}) {
-  const lines = [];
-  if (categoryLabel) lines.push(`Maintenance request — ${categoryLabel}`);
-  if (location.trim()) lines.push(`Location: ${location.trim()}`);
-  if (durationLabel) lines.push(`Started: ${durationLabel}`);
-  if (urgencyLabel) lines.push(`Urgency: ${urgencyLabel}`);
-  if (details.trim()) {
-    if (lines.length > 0) lines.push("");
-    lines.push(details.trim());
-  }
-  return lines.join("\n");
-}
-
-function generateArchitecturalMessage({
-  projectTypeLabel,
-  projectName,
-  unitLocation,
-  materials,
-  contractorLabel,
-  startDate,
-  durationLabel,
-  notes,
-}) {
-  const lines = [];
-  if (projectTypeLabel) lines.push(`ARC request — ${projectTypeLabel}`);
-  if (projectName.trim()) lines.push(`Project: ${projectName.trim()}`);
-  if (unitLocation.trim()) lines.push(`Location: ${unitLocation.trim()}`);
-  if (startDate.trim()) lines.push(`Estimated start: ${startDate.trim()}`);
-  if (durationLabel) lines.push(`Duration: ${durationLabel}`);
-  if (contractorLabel) lines.push(`Work performed by: ${contractorLabel}`);
-  if (materials.trim()) {
-    if (lines.length > 0) lines.push("");
-    lines.push(`Materials: ${materials.trim()}`);
-  }
-  if (notes.trim()) {
-    lines.push("");
-    lines.push(`Notes: ${notes.trim()}`);
-  }
-  return lines.join("\n");
-}
-
-function generateContactEmail({
-  categoryLabel,
-  subjectInput,
-  unit,
-  message,
-  replyPrefLabel,
-  phone,
-}) {
-  // Subject line
-  let subject = "";
-  const trimmedSubject = subjectInput.trim();
-  if (categoryLabel && trimmedSubject) {
-    subject = `[Queens Court] ${categoryLabel} — ${trimmedSubject}`;
-  } else if (categoryLabel) {
-    subject = `[Queens Court] ${categoryLabel}`;
-  } else if (trimmedSubject) {
-    subject = `[Queens Court] ${trimmedSubject}`;
-  }
-
-  // Body
-  const bodyParts = [];
-  if (message.trim()) bodyParts.push(message.trim());
-
-  const footerLines = [];
-  if (unit.trim()) footerLines.push(`Unit ${unit.trim()}`);
-  if (replyPrefLabel) footerLines.push(`Reply by ${replyPrefLabel.toLowerCase()}`);
-  if (phone.trim()) footerLines.push(`Phone: ${phone.trim()}`);
-
-  if (footerLines.length > 0) {
-    footerLines.push("Sent via the Queens Court resident portal");
-    if (bodyParts.length > 0) {
-      bodyParts.push("");
-      bodyParts.push("—");
-    }
-    bodyParts.push(...footerLines);
-  }
-
-  return { subject, body: bodyParts.join("\n") };
 }
 
 function isSameDay(a, b) {
@@ -1808,135 +1614,6 @@ const THEME_CSS = `
 `;
 
 // ─────────────────────────────────────────────────────────────────
-//  MASTHEAD
-// ─────────────────────────────────────────────────────────────────
-
-function Masthead() {
-  return (
-    <header
-      className="qc-masthead"
-      style={{
-        padding: "22px 48px",
-        borderBottom: "1px solid var(--border)",
-        background: "var(--surface)",
-      }}
-    >
-      <div className="flex items-center justify-between" style={{ gap: 24 }}>
-        <div className="flex items-baseline" style={{ gap: 14, minWidth: 0 }}>
-          <h1
-            style={{
-              fontSize: 17,
-              fontWeight: 600,
-              lineHeight: 1.2,
-              color: "var(--t1)",
-              letterSpacing: "-0.015em",
-              margin: 0,
-              whiteSpace: "nowrap",
-            }}
-          >
-            {PROPERTY.name}
-          </h1>
-          <span
-            style={{ color: "var(--t4)", fontSize: 13, lineHeight: 1 }}
-            aria-hidden="true"
-          >
-            ·
-          </span>
-          <span
-            className="qc-caps-sm"
-            style={{
-              color: "var(--t3)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {PROPERTY.era}
-          </span>
-        </div>
-        <div className="flex items-center" style={{ gap: 8, flexShrink: 0 }}>
-          <div
-            className="flex items-center"
-            style={{
-              border: "1px solid var(--ink)",
-              color: "var(--t1)",
-              padding: "5px 10px",
-              borderRadius: 5,
-              fontSize: 10.5,
-              fontWeight: 600,
-              gap: 6,
-              background: "var(--surface)",
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-            }}
-          >
-            <Lock size={10} strokeWidth={2.25} />
-            Board
-          </div>
-          <button className="qc-btn qc-btn-ghost" style={{ padding: "5px 10px" }}>
-            <LogOut size={11} strokeWidth={1.75} />
-            Log out
-          </button>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────
-//  QUICK LINKS
-// ─────────────────────────────────────────────────────────────────
-
-function QuickLinksBar() {
-  return (
-    <div
-      className="qc-quicklinks-bar"
-      style={{
-        padding: "12px 48px",
-        borderBottom: "1px solid var(--border)",
-        background: "var(--bg)",
-      }}
-    >
-      <div
-        className="flex items-center"
-        style={{
-          gap: 4,
-          overflowX: "auto",
-          scrollbarWidth: "thin",
-        }}
-      >
-        <span
-          className="qc-caps-sm"
-          style={{
-            color: "var(--t3)",
-            fontWeight: 600,
-            paddingRight: 14,
-            borderRight: "1px solid var(--border)",
-            marginRight: 6,
-            flexShrink: 0,
-          }}
-        >
-          AppFolio
-        </span>
-        {QUICK_LINKS.map(({ id, label, icon: Icon, url }) => (
-          <a
-            key={id}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="qc-quicklink"
-          >
-            <Icon size={13} strokeWidth={1.5} />
-            <span>{label}</span>
-            <ArrowUpRight size={11} strokeWidth={1.75} className="qc-quicklink-arrow" />
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────
 //  CALENDAR — MONTH GRID
 // ─────────────────────────────────────────────────────────────────
 
@@ -2177,7 +1854,7 @@ function EventModal({ event, onClose }) {
   );
 }
 
-function CalendarSection() {
+function CalendarSection({ events }) {
   const today = useMemo(() => new Date(), []);
   const [currentMonth, setCurrentMonth] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1)
@@ -2187,14 +1864,14 @@ function CalendarSection() {
   const days = useMemo(() => buildMonthGrid(currentMonth), [currentMonth]);
   const eventsByDay = useMemo(() => {
     const map = new Map();
-    EVENTS.forEach((event) => {
+    events.forEach((event) => {
       const d = new Date(event.date);
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(event);
     });
     return map;
-  }, []);
+  }, [events]);
 
   const handlePrev = () => {
     const d = new Date(currentMonth);
@@ -2211,7 +1888,7 @@ function CalendarSection() {
   };
 
   const isCurrentMonthToday = isSameMonth(currentMonth, today);
-  const openEvent = openEventId ? EVENTS.find((e) => e.id === openEventId) : null;
+  const openEvent = openEventId ? events.find((e) => e.id === openEventId) : null;
 
   return (
     <section style={{ marginBottom: 56 }}>
@@ -2406,12 +2083,16 @@ function HelpPopover({ label = "About this form", children }) {
 }
 
 function MaintenanceSection() {
+  const hoa = useHoa();
+  const appfolioBase = hoa.appfolio_base || "";
+  const appfolioNew = appfolioBase ? `${appfolioBase}/online_work_orders/new` : "";
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
   const [duration, setDuration] = useState("");
   const [urgency, setUrgency] = useState("");
   const [details, setDetails] = useState("");
   const [copied, setCopied] = useState(false);
+  const [sent, setSent] = useState(false);
   const [step, setStep] = useState(0);
 
   const STEPS = ["What & where", "Severity", "Details"];
@@ -2444,6 +2125,22 @@ function MaintenanceSection() {
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       // Clipboard API unavailable — silently fail.
+    }
+  };
+
+  const handleSend = async () => {
+    if (!hasContent) return;
+    try {
+      await apiPost(`/api/hoas/${hoa.id}/submissions`, {
+        form_type: "maintenance",
+        payload: {
+          categoryLabel, location, durationLabel, urgencyLabel, details,
+        },
+      });
+      setSent(true);
+      setTimeout(() => setSent(false), 3000);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -2572,16 +2269,27 @@ function MaintenanceSection() {
                 )}
                 {copied ? "Copied" : "Copy message"}
               </button>
-              <a
-                href={APPFOLIO_NEW_REQUEST}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={handleSend}
+                disabled={!hasContent}
                 className="qc-btn qc-btn-ghost"
-                style={{ textDecoration: "none" }}
               >
-                Open in AppFolio
-                <ArrowUpRight size={12} strokeWidth={1.75} />
-              </a>
+                <Send size={12} strokeWidth={1.75} />
+                {sent ? "Sent" : "Send to manager"}
+              </button>
+              {appfolioNew && (
+                <a
+                  href={appfolioNew}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="qc-btn qc-btn-ghost"
+                  style={{ textDecoration: "none" }}
+                >
+                  Open in AppFolio
+                  <ArrowUpRight size={12} strokeWidth={1.75} />
+                </a>
+              )}
             </div>
 
             <p
@@ -2592,8 +2300,8 @@ function MaintenanceSection() {
                 lineHeight: 1.5,
               }}
             >
-              Paste your message into the "Tell us what's going on" field. AGM will
-              follow up by email or phone, usually within one business day.
+              "Send to manager" emails the request straight to {hoa.name}'s
+              property manager. You can also copy and paste it into AppFolio.
             </p>
 
             <HelpPopover label="What is this form for?">
@@ -2621,6 +2329,9 @@ function MaintenanceSection() {
 // ─────────────────────────────────────────────────────────────────
 
 function ArchitecturalSection() {
+  const hoa = useHoa();
+  const appfolioBase = hoa.appfolio_base || "";
+  const appfolioNew = appfolioBase ? `${appfolioBase}/architectural_reviews/new` : "";
   const [projectType, setProjectType] = useState("");
   const [projectName, setProjectName] = useState("");
   const [unitLocation, setUnitLocation] = useState("");
@@ -2630,6 +2341,7 @@ function ArchitecturalSection() {
   const [duration, setDuration] = useState("");
   const [notes, setNotes] = useState("");
   const [copied, setCopied] = useState(false);
+  const [sent, setSent] = useState(false);
   const [step, setStep] = useState(0);
 
   const STEPS = ["Project type", "Details", "Logistics", "Notes"];
@@ -2674,6 +2386,23 @@ function ArchitecturalSection() {
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       // Clipboard API unavailable — silently fail.
+    }
+  };
+
+  const handleSend = async () => {
+    if (!hasContent) return;
+    try {
+      await apiPost(`/api/hoas/${hoa.id}/submissions`, {
+        form_type: "architectural",
+        payload: {
+          projectTypeLabel, projectName, unitLocation, materials,
+          contractorLabel, startDate, durationLabel, notes,
+        },
+      });
+      setSent(true);
+      setTimeout(() => setSent(false), 3000);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -2848,16 +2577,27 @@ function ArchitecturalSection() {
                 )}
                 {copied ? "Copied" : "Copy message"}
               </button>
-              <a
-                href={APPFOLIO_NEW_ARC}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={handleSend}
+                disabled={!hasContent}
                 className="qc-btn qc-btn-ghost"
-                style={{ textDecoration: "none" }}
               >
-                Open in AppFolio
-                <ArrowUpRight size={12} strokeWidth={1.75} />
-              </a>
+                <Send size={12} strokeWidth={1.75} />
+                {sent ? "Sent" : "Send to ARC"}
+              </button>
+              {appfolioNew && (
+                <a
+                  href={appfolioNew}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="qc-btn qc-btn-ghost"
+                  style={{ textDecoration: "none" }}
+                >
+                  Open in AppFolio
+                  <ArrowUpRight size={12} strokeWidth={1.75} />
+                </a>
+              )}
             </div>
 
             <p
@@ -2901,6 +2641,14 @@ function ArchitecturalSection() {
 // ─────────────────────────────────────────────────────────────────
 
 function ContactSection() {
+  const hoa = useHoa();
+  const recipients = useMemo(() => ({
+    board: hoa.board_email
+      ? { email: hoa.board_email, label: `${hoa.name} Board` }
+      : { email: hoa.manager_email, label: `${hoa.name} (via AGM)` },
+    manager: { email: hoa.manager_email, label: "AGM Property Management" },
+  }), [hoa]);
+
   const [category, setCategory] = useState("");
   const [subjectInput, setSubjectInput] = useState("");
   const [unit, setUnit] = useState("");
@@ -2908,15 +2656,14 @@ function ContactSection() {
   const [replyPref, setReplyPref] = useState("");
   const [phone, setPhone] = useState("");
   const [copied, setCopied] = useState(false);
+  const [sent, setSent] = useState(false);
   const [step, setStep] = useState(0);
 
   const STEPS = ["Topic", "Message", "Reply"];
 
   const selectedCategory = CONTACT_CATEGORIES.find((c) => c.id === category);
   const categoryLabel = selectedCategory?.label || "";
-  const recipientInfo = selectedCategory
-    ? CONTACT_RECIPIENTS[selectedCategory.recipient]
-    : null;
+  const recipientInfo = selectedCategory ? recipients[selectedCategory.recipient] : null;
   const replyPrefLabel =
     CONTACT_REPLY_PREFS.find((r) => r.id === replyPref)?.label || "";
 
@@ -2925,6 +2672,7 @@ function ContactSection() {
   const { subject, body } = useMemo(
     () =>
       generateContactEmail({
+        hoaName: hoa.name,
         categoryLabel,
         subjectInput,
         unit,
@@ -2932,7 +2680,7 @@ function ContactSection() {
         replyPrefLabel,
         phone: showPhone ? phone : "",
       }),
-    [categoryLabel, subjectInput, unit, message, replyPrefLabel, phone, showPhone]
+    [hoa.name, categoryLabel, subjectInput, unit, message, replyPrefLabel, phone, showPhone]
   );
 
   const hasContent = subject.length > 0 || body.length > 0;
@@ -2955,6 +2703,29 @@ function ContactSection() {
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       // silent
+    }
+  };
+
+  const handleSendThroughPortal = async () => {
+    if (!canSend) return;
+    try {
+      await apiPost(`/api/hoas/${hoa.id}/submissions`, {
+        form_type: "contact",
+        payload: {
+          categoryLabel,
+          subjectInput,
+          unit,
+          message,
+          replyPrefLabel,
+          phone: showPhone ? phone : "",
+          recipient: selectedCategory.recipient,
+        },
+        submitter: { unit },
+      });
+      setSent(true);
+      setTimeout(() => setSent(false), 3000);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -3156,24 +2927,25 @@ function ContactSection() {
             </div>
 
             <div className="qc-form-actions">
+              <button
+                type="button"
+                onClick={handleSendThroughPortal}
+                disabled={!canSend}
+                className="qc-btn qc-btn-primary"
+              >
+                <Send size={12} strokeWidth={1.75} />
+                {sent ? "Sent" : "Send through portal"}
+              </button>
               {canSend ? (
                 <a
                   href={mailtoUrl}
-                  className="qc-btn qc-btn-primary"
+                  className="qc-btn qc-btn-ghost"
                   style={{ textDecoration: "none" }}
                 >
-                  <Send size={12} strokeWidth={1.75} />
-                  Send email
+                  Open in mail app
+                  <ArrowUpRight size={12} strokeWidth={1.75} />
                 </a>
-              ) : (
-                <span
-                  className="qc-btn qc-btn-primary"
-                  style={{ opacity: 0.4, cursor: "not-allowed" }}
-                >
-                  <Send size={12} strokeWidth={1.75} />
-                  Send email
-                </span>
-              )}
+              ) : null}
               <button
                 type="button"
                 onClick={handleCopy}
@@ -3185,7 +2957,7 @@ function ContactSection() {
                 ) : (
                   <Copy size={12} strokeWidth={1.75} />
                 )}
-                {copied ? "Copied" : "Copy email"}
+                {copied ? "Copied" : "Copy"}
               </button>
             </div>
 
@@ -3197,9 +2969,9 @@ function ContactSection() {
                 lineHeight: 1.5,
               }}
             >
-              "Send email" opens your default mail app with the message ready to
-              review and send. The board typically responds within a few
-              business days; AGM responds within one business day.
+              "Send through portal" delivers the message directly. The board
+              typically responds within a few business days; AGM within one
+              business day.
             </p>
           </div>
         </div>
@@ -3401,14 +3173,14 @@ function FolderView({ view, folders, onFolderClick, activeFolderId, showScope = 
 //  TOP VIEW SWITCHER (Calendar / Documents)
 // ─────────────────────────────────────────────────────────────────
 
-function TopViewSwitcher({ topView, onTopViewChange, docsView, onDocsViewChange, boardMode, onLogout }) {
+function TopViewSwitcher({ topView, onTopViewChange, docsView, onDocsViewChange, boardMode, onLogout, events, folders }) {
   const sortedEvents = useMemo(
-    () => [...EVENTS].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
-    []
+    () => [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+    [events]
   );
   const totalFiles = useMemo(
-    () => FOLDERS.reduce((acc, f) => acc + f.files.length, 0),
-    []
+    () => folders.reduce((acc, f) => acc + f.files.length, 0),
+    [folders]
   );
   const next = sortedEvents[0];
 
@@ -3425,7 +3197,9 @@ function TopViewSwitcher({ topView, onTopViewChange, docsView, onDocsViewChange,
         >
           <div className="qc-top-tab-label">Calendar</div>
           <div className="qc-top-tab-meta qc-num">
-            Next {formatDateShort(next.date)} · {pad2(sortedEvents.length)} scheduled
+            {next
+              ? `Next ${formatDateShort(next.date)} · ${pad2(sortedEvents.length)} scheduled`
+              : "Nothing scheduled yet"}
           </div>
         </button>
         <button
@@ -3437,7 +3211,7 @@ function TopViewSwitcher({ topView, onTopViewChange, docsView, onDocsViewChange,
         >
           <div className="qc-top-tab-label">Documents</div>
           <div className="qc-top-tab-meta qc-num">
-            {FOLDERS.length} sections · {totalFiles} files
+            {folders.length} sections · {totalFiles} files
           </div>
         </button>
         <button
@@ -3565,6 +3339,8 @@ function CollapsibleGroup({ numeral, label, sublabel, count, defaultOpen = true,
 // ─────────────────────────────────────────────────────────────────
 
 function FolderDetailPane({ folder, onBack }) {
+  const hoa = useHoa();
+  const hoaId = hoa.id;
   const sortedFiles = useMemo(
     () =>
       [...folder.files].sort(
@@ -3643,35 +3419,46 @@ function FolderDetailPane({ folder, onBack }) {
           })}
         </aside>
 
-        <div className="qc-folder-detail-preview">
-          <div className="qc-folder-detail-preview-head">
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div className="qc-folder-detail-preview-name">
-                {selected.name.replace(/\.pdf$/, "")}
+        {selected ? (
+          <div className="qc-folder-detail-preview">
+            <div className="qc-folder-detail-preview-head">
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div className="qc-folder-detail-preview-name">
+                  {selected.name.replace(/\.pdf$/, "")}
+                </div>
+                <div className="qc-folder-detail-preview-meta qc-num">
+                  PDF · {formatDateShort(selected.date)} · {selected.size}
+                </div>
               </div>
-              <div className="qc-folder-detail-preview-meta qc-num">
-                PDF · {formatDateShort(selected.date)} · {selected.size}
-              </div>
+              <a
+                className="qc-btn qc-btn-primary"
+                href={`/api/hoas/${hoaId}/documents/${selected.id}?download=1`}
+                style={{ flexShrink: 0, textDecoration: "none" }}
+              >
+                <Download size={11} strokeWidth={2} />
+                Download
+              </a>
             </div>
-            <button className="qc-btn qc-btn-primary" type="button" style={{ flexShrink: 0 }}>
-              <Download size={11} strokeWidth={2} />
-              Download
-            </button>
+            <div className="qc-folder-detail-preview-frame">
+              <DocPagePreview file={selected} folder={folder} />
+            </div>
           </div>
-          <div className="qc-folder-detail-preview-frame">
-            <DocPagePreview file={selected} folder={folder} />
+        ) : (
+          <div className="qc-folder-detail-preview" style={{ padding: 32, color: "var(--t3)", fontSize: 13 }}>
+            No documents in this section yet.
           </div>
-        </div>
+        )}
       </div>
     </section>
   );
 }
 
 function DocPagePreview({ file, folder }) {
+  const hoa = useHoa();
   return (
     <article className="qc-doc-page" aria-label="Document preview">
       <div className="qc-doc-page-header">
-        {PROPERTY.name} · {folder.name}
+        {hoa.name} · {folder.name}
       </div>
       <h3 className="qc-doc-page-title">{file.name.replace(/\.pdf$/, "")}</h3>
       <div className="qc-doc-page-date qc-num">
@@ -3692,7 +3479,7 @@ function DocPagePreview({ file, folder }) {
         <div className="qc-doc-page-line short" />
       </div>
       <div className="qc-doc-page-foot qc-num">
-        <span>{PROPERTY.name}</span>
+        <span>{hoa.name}</span>
         <span>Page 1</span>
       </div>
     </article>
@@ -3751,31 +3538,31 @@ function SearchResults({ query, folders, onFolderClick, activeFolderId, view = "
 //  DOCUMENTS PANE
 // ─────────────────────────────────────────────────────────────────
 
-function DocumentsPane({ openFolderId, setOpenFolderId, view, boardMode, onUnlockClick }) {
+function DocumentsPane({ openFolderId, setOpenFolderId, view, boardMode, onUnlockClick, folders }) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const boardFolders = useMemo(
     () =>
-      [...FOLDERS.filter((f) => f.scope === "board")].sort(
+      [...folders.filter((f) => f.scope === "board")].sort(
         (a, b) => new Date(lastUpdated(b)).getTime() - new Date(lastUpdated(a)).getTime()
       ),
-    []
+    [folders]
   );
   const allFolders = useMemo(
     () =>
-      [...FOLDERS.filter((f) => f.scope === "all")].sort(
+      [...folders.filter((f) => f.scope === "all")].sort(
         (a, b) => new Date(lastUpdated(b)).getTime() - new Date(lastUpdated(a)).getTime()
       ),
-    []
+    [folders]
   );
   const isSearching = searchQuery.trim().length > 0;
 
   // When board mode is locked, exclude board-scoped folders from search results.
   const searchableFolders = boardMode
-    ? FOLDERS
-    : FOLDERS.filter((f) => f.scope !== "board");
+    ? folders
+    : folders.filter((f) => f.scope !== "board");
 
-  const openFolder = openFolderId ? FOLDERS.find((f) => f.id === openFolderId) : null;
+  const openFolder = openFolderId ? folders.find((f) => f.id === openFolderId) : null;
   if (openFolder) {
     return (
       <FolderDetailPane folder={openFolder} onBack={() => setOpenFolderId(null)} />
@@ -3853,71 +3640,51 @@ function DocumentsPane({ openFolderId, setOpenFolderId, view, boardMode, onUnloc
 }
 
 // ─────────────────────────────────────────────────────────────────
-//  ROOT
+//  ROOT — Resident app (multi-tenant)
 // ─────────────────────────────────────────────────────────────────
 
-// Per-property board password — replace with server-side validation in production.
-const BOARD_PASSWORD = "queenscourt-board";
-const BOARD_MODE_STORAGE_KEY = "qc_board_mode_unlocked_until";
-const BOARD_MODE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+const DEFAULT_HERO_IMG = "/queenscourt-hero.webp";
 
-// Per-property resident password — gates the entire portal.
-const RESIDENT_PASSWORD = "queenscourt";
-const RESIDENT_AUTH_STORAGE_KEY = "qc_resident_authed_until";
-const RESIDENT_AUTH_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-const QUEENS_COURT_HERO_IMG = "/queenscourt-hero.webp";
-
-function SplashLogin({ onAuth }) {
+function SplashLogin({ hoa, onAuth }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  const handleSubmit = (e) => {
+  const heroUrl = hoa.hero_image_key ? `/api/hoas/${hoa.id}/hero` : DEFAULT_HERO_IMG;
+
+  const handleSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (password === RESIDENT_PASSWORD) {
-      try {
-        localStorage.setItem(
-          RESIDENT_AUTH_STORAGE_KEY,
-          String(Date.now() + RESIDENT_AUTH_DURATION_MS)
-        );
-      } catch {
-        // ignore — auth proceeds in-memory for this session
-      }
+    if (!password || busy) return;
+    setBusy(true);
+    try {
+      await apiPost(`/api/hoas/${hoa.id}/auth/resident`, { password });
       onAuth();
-    } else {
+    } catch {
       setError(true);
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
-    <div
-      className="qc-splash"
-      style={{ minHeight: "100vh", background: "var(--bg)" }}
-    >
+    <div className="qc-splash" style={{ minHeight: "100vh", background: "var(--bg)" }}>
       <style>{THEME_CSS}</style>
       <div className="qc-splash-frame">
-        {/* Left pane — building photo with overlay + bottom-anchored identity */}
-        <div
-          className="qc-splash-left"
-          style={{ backgroundImage: `url(${QUEENS_COURT_HERO_IMG})` }}
-        >
+        <div className="qc-splash-left" style={{ backgroundImage: `url(${heroUrl})` }}>
           <div className="qc-splash-left-overlay" />
           <div className="qc-splash-left-content">
             <div className="qc-splash-eyebrow">The resident portal</div>
-            <h1 className="qc-splash-title">{PROPERTY.name}</h1>
+            <h1 className="qc-splash-title">{hoa.name}</h1>
             <div className="qc-splash-address qc-num">
-              <div>{PROPERTY.street}</div>
-              <div>{PROPERTY.city}</div>
+              {hoa.street && <div>{hoa.street}</div>}
+              {hoa.city && <div>{hoa.city}</div>}
             </div>
             <div className="qc-splash-rule" />
-            <div className="qc-splash-era qc-num">{PROPERTY.era}</div>
+            {hoa.era && <div className="qc-splash-era qc-num">{hoa.era}</div>}
           </div>
-          <div className="qc-splash-foot qc-caps-sm">
-            Managed by AGM Real Estate Group
-          </div>
+          <div className="qc-splash-foot qc-caps-sm">Managed by AGM Real Estate Group</div>
         </div>
 
-        {/* Right pane — auth */}
         <div className="qc-splash-right">
           <div className="qc-splash-right-inner">
             <p className="qc-splash-lede">
@@ -3927,11 +3694,7 @@ function SplashLogin({ onAuth }) {
             </p>
 
             <div className="qc-splash-form">
-              <label
-                className="qc-form-label"
-                htmlFor="qc-splash-password"
-                style={{ fontSize: 13 }}
-              >
+              <label className="qc-form-label" htmlFor="qc-splash-password" style={{ fontSize: 13 }}>
                 Resident password
               </label>
               <input
@@ -3940,29 +3703,13 @@ function SplashLogin({ onAuth }) {
                 className="qc-input"
                 placeholder="Enter password"
                 value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (error) setError(false);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSubmit();
-                }}
+                onChange={(e) => { setPassword(e.target.value); if (error) setError(false); }}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
                 autoFocus
-                style={
-                  error
-                    ? { borderColor: "#b54a3c", marginTop: 12 }
-                    : { marginTop: 12 }
-                }
+                style={error ? { borderColor: "#b54a3c", marginTop: 12 } : { marginTop: 12 }}
               />
               {error && (
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "#b54a3c",
-                    marginTop: 8,
-                    fontWeight: 500,
-                  }}
-                >
+                <div style={{ fontSize: 12, color: "#b54a3c", marginTop: 8, fontWeight: 500 }}>
                   That password didn't match. Check the email AGM sent when you
                   moved in, or contact the manager below.
                 </div>
@@ -3972,7 +3719,7 @@ function SplashLogin({ onAuth }) {
                 type="button"
                 onClick={handleSubmit}
                 className="qc-btn qc-btn-primary"
-                disabled={!password}
+                disabled={!password || busy}
                 style={{ marginTop: 18, padding: "10px 16px", fontSize: 13 }}
               >
                 Continue
@@ -3986,13 +3733,9 @@ function SplashLogin({ onAuth }) {
               </div>
               <div style={{ fontSize: 13, color: "var(--t2)", lineHeight: 1.5 }}>
                 Contact the AGM property manager at{" "}
-                <a
-                  href="mailto:manager@agmrealestategroup.com"
-                  style={{ color: "var(--t1)", fontWeight: 500 }}
-                >
+                <a href="mailto:manager@agmrealestategroup.com" style={{ color: "var(--t1)", fontWeight: 500 }}>
                   manager@agmrealestategroup.com
-                </a>{" "}
-                or call (425) 555-0184.
+                </a>.
               </div>
             </div>
           </div>
@@ -4002,14 +3745,13 @@ function SplashLogin({ onAuth }) {
   );
 }
 
-function UnlockBoardModal({ onClose, onUnlock }) {
+function UnlockBoardModal({ hoa, onClose, onUnlock }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    function handleEscape(e) {
-      if (e.key === "Escape") onClose();
-    }
+    function handleEscape(e) { if (e.key === "Escape") onClose(); }
     document.addEventListener("keydown", handleEscape);
     document.body.style.overflow = "hidden";
     return () => {
@@ -4018,12 +3760,17 @@ function UnlockBoardModal({ onClose, onUnlock }) {
     };
   }, [onClose]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (password === BOARD_PASSWORD) {
+    if (!password || busy) return;
+    setBusy(true);
+    try {
+      await apiPost(`/api/hoas/${hoa.id}/auth/board`, { password });
       onUnlock();
-    } else {
+    } catch {
       setError(true);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -4039,11 +3786,7 @@ function UnlockBoardModal({ onClose, onUnlock }) {
       >
         <div
           className="flex items-center justify-between"
-          style={{
-            padding: "16px 24px",
-            borderBottom: "1px solid var(--border)",
-            background: "var(--bg)",
-          }}
+          style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", background: "var(--bg)" }}
         >
           <span className="qc-tag">
             <Lock size={9} strokeWidth={2.25} />
@@ -4052,44 +3795,17 @@ function UnlockBoardModal({ onClose, onUnlock }) {
           <button
             onClick={onClose}
             aria-label="Close"
-            style={{
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              color: "var(--t2)",
-              padding: 4,
-              display: "flex",
-              alignItems: "center",
-              borderRadius: 4,
-            }}
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--t2)", padding: 4, display: "flex", alignItems: "center", borderRadius: 4 }}
           >
             <X size={16} strokeWidth={1.75} />
           </button>
         </div>
 
         <div style={{ padding: "26px 28px 24px" }}>
-          <h2
-            id="qc-unlock-title"
-            style={{
-              fontSize: 22,
-              fontWeight: 600,
-              lineHeight: 1.2,
-              color: "var(--t1)",
-              letterSpacing: "-0.02em",
-              marginTop: 0,
-              marginBottom: 10,
-            }}
-          >
+          <h2 id="qc-unlock-title" style={{ fontSize: 22, fontWeight: 600, lineHeight: 1.2, color: "var(--t1)", letterSpacing: "-0.02em", marginTop: 0, marginBottom: 10 }}>
             Unlock Board Materials
           </h2>
-          <p
-            style={{
-              fontSize: 14,
-              color: "var(--t2)",
-              lineHeight: 1.55,
-              margin: "0 0 22px",
-            }}
-          >
+          <p style={{ fontSize: 14, color: "var(--t2)", lineHeight: 1.55, margin: "0 0 22px" }}>
             Board members were given an access password by the property manager.
             Enter it below to view financial reports, board packets, and other
             restricted documents.
@@ -4097,11 +3813,7 @@ function UnlockBoardModal({ onClose, onUnlock }) {
 
           <div>
             <div className="qc-form-field" style={{ marginBottom: 16 }}>
-              <label
-                className="qc-form-label"
-                htmlFor="qc-unlock-password"
-                style={{ fontSize: 13 }}
-              >
+              <label className="qc-form-label" htmlFor="qc-unlock-password" style={{ fontSize: 13 }}>
                 Board password
               </label>
               <input
@@ -4110,29 +3822,13 @@ function UnlockBoardModal({ onClose, onUnlock }) {
                 className="qc-input"
                 placeholder="Enter password"
                 value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (error) setError(false);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSubmit();
-                }}
+                onChange={(e) => { setPassword(e.target.value); if (error) setError(false); }}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
                 autoFocus
-                style={
-                  error
-                    ? { borderColor: "#b54a3c" }
-                    : undefined
-                }
+                style={error ? { borderColor: "#b54a3c" } : undefined}
               />
               {error && (
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "#b54a3c",
-                    marginTop: 8,
-                    fontWeight: 500,
-                  }}
-                >
+                <div style={{ fontSize: 12, color: "#b54a3c", marginTop: 8, fontWeight: 500 }}>
                   That password didn't match. Check with the property manager
                   if you've lost it.
                 </div>
@@ -4140,20 +3836,11 @@ function UnlockBoardModal({ onClose, onUnlock }) {
             </div>
 
             <div className="flex items-center" style={{ gap: 8 }}>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                className="qc-btn qc-btn-primary"
-                disabled={!password}
-              >
+              <button type="button" onClick={handleSubmit} className="qc-btn qc-btn-primary" disabled={!password || busy}>
                 <Lock size={11} strokeWidth={1.75} />
                 Unlock for 24 hours
               </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="qc-btn qc-btn-ghost"
-              >
+              <button type="button" onClick={onClose} className="qc-btn qc-btn-ghost">
                 Cancel
               </button>
             </div>
@@ -4164,129 +3851,141 @@ function UnlockBoardModal({ onClose, onUnlock }) {
   );
 }
 
-export default function QueensCourtPortal() {
-  const [authed, setAuthed] = useState(false);
+// Loads + caches per-HOA events, folders, and documents from the API.
+function useResidentData(slug, residentAuthed, boardMode) {
+  const [events, setEvents] = useState([]);
+  const [folders, setFolders] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!slug || !residentAuthed) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [evRes, foRes, docRes] = await Promise.all([
+          apiGet(`/api/hoas/${slug}/events`),
+          apiGet(`/api/hoas/${slug}/folders`),
+          apiGet(`/api/hoas/${slug}/documents`),
+        ]);
+        if (cancelled) return;
+        setEvents((evRes.events || []).map(shapeEvent));
+        setFolders(shapeFolders(foRes.folders || [], docRes.documents || []));
+        setLoaded(true);
+      } catch (err) {
+        console.error("Failed to load resident data", err);
+      }
+    })();
+    return () => { cancelled = true; };
+    // re-fetch when board mode flips since server filters by scope.
+  }, [slug, residentAuthed, boardMode]);
+
+  return { events, folders, loaded };
+}
+
+export default function QueensCourtPortal({ hoa }) {
+  const slug = hoa.id;
   const [authChecked, setAuthChecked] = useState(false);
-  const [openFolderId, setOpenFolderId] = useState(null);
-  const [topView, setTopView] = useState("documents"); // 'calendar' | 'documents'
-  const [docsView, setDocsView] = useState("grid");   // 'list' | 'grid'
+  const [residentAuthed, setResidentAuthed] = useState(false);
   const [boardMode, setBoardMode] = useState(false);
+  const [openFolderId, setOpenFolderId] = useState(null);
+  const [topView, setTopView] = useState("documents");
+  const [docsView, setDocsView] = useState("grid");
   const [showUnlockModal, setShowUnlockModal] = useState(false);
 
-  // Check resident-auth state on mount; respect 7-day expiry.
+  // Check session against server cookies on mount + whenever the slug changes.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(RESIDENT_AUTH_STORAGE_KEY);
-      if (raw) {
-        const expiry = parseInt(raw, 10);
-        if (Number.isFinite(expiry) && expiry > Date.now()) {
-          setAuthed(true);
-        } else {
-          localStorage.removeItem(RESIDENT_AUTH_STORAGE_KEY);
-        }
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await apiGet(`/api/hoas/${slug}/auth/session`);
+        if (cancelled) return;
+        setResidentAuthed(!!data.resident);
+        setBoardMode(!!data.board);
+      } catch {
+        // unauthenticated
+      } finally {
+        if (!cancelled) setAuthChecked(true);
       }
-    } catch {
-      // localStorage unavailable
-    }
-    setAuthChecked(true);
-  }, []);
+    })();
+    return () => { cancelled = true; };
+  }, [slug]);
 
-  // Read board-mode state from localStorage on mount; respect 24-hour expiry.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(BOARD_MODE_STORAGE_KEY);
-      if (!raw) return;
-      const expiry = parseInt(raw, 10);
-      if (Number.isFinite(expiry) && expiry > Date.now()) {
-        setBoardMode(true);
-      } else {
-        localStorage.removeItem(BOARD_MODE_STORAGE_KEY);
-      }
-    } catch {
-      // localStorage unavailable (private browsing, restricted iframe, etc.)
-    }
-  }, []);
+  const { events, folders } = useResidentData(slug, residentAuthed, boardMode);
 
-  const unlockBoardMode = () => {
-    try {
-      localStorage.setItem(
-        BOARD_MODE_STORAGE_KEY,
-        String(Date.now() + BOARD_MODE_DURATION_MS)
-      );
-    } catch {
-      // ignore
-    }
+  const handleUnlock = () => {
     setBoardMode(true);
     setShowUnlockModal(false);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     try {
-      localStorage.removeItem(RESIDENT_AUTH_STORAGE_KEY);
-      localStorage.removeItem(BOARD_MODE_STORAGE_KEY);
+      await apiDelete(`/api/hoas/${slug}/auth/resident`);
+      await apiDelete(`/api/hoas/${slug}/auth/board`);
     } catch {
       // ignore
     }
     setBoardMode(false);
-    setAuthed(false);
+    setResidentAuthed(false);
+    setOpenFolderId(null);
   };
 
-  // Avoid the splash-flash on a returning authed user — wait for the auth check.
   if (!authChecked) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "var(--bg)",
-        }}
-      >
+      <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
         <style>{THEME_CSS}</style>
       </div>
     );
   }
 
-  if (!authed) {
-    return <SplashLogin onAuth={() => setAuthed(true)} />;
+  if (!residentAuthed) {
+    return (
+      <HoaProvider hoa={hoa}>
+        <SplashLogin hoa={hoa} onAuth={() => setResidentAuthed(true)} />
+      </HoaProvider>
+    );
   }
 
   return (
-    <div className="qc-shell" style={{ minHeight: "100vh", background: "var(--bg)" }}>
-      <style>{THEME_CSS}</style>
+    <HoaProvider hoa={hoa}>
+      <div className="qc-shell" style={{ minHeight: "100vh", background: "var(--bg)" }}>
+        <style>{THEME_CSS}</style>
 
-      <div
-        className="qc-body"
-        style={{ padding: "28px 48px 64px" }}
-      >
-        <TopViewSwitcher
-          topView={topView}
-          onTopViewChange={setTopView}
-          docsView={docsView}
-          onDocsViewChange={setDocsView}
-          boardMode={boardMode}
-          onLogout={handleLogout}
-        />
-
-        {topView === "calendar" && <CalendarSection />}
-        {topView === "documents" && (
-          <DocumentsPane
-            openFolderId={openFolderId}
-            setOpenFolderId={setOpenFolderId}
-            view={docsView}
+        <div className="qc-body" style={{ padding: "28px 48px 64px" }}>
+          <TopViewSwitcher
+            topView={topView}
+            onTopViewChange={setTopView}
+            docsView={docsView}
+            onDocsViewChange={setDocsView}
             boardMode={boardMode}
-            onUnlockClick={() => setShowUnlockModal(true)}
+            onLogout={handleLogout}
+            events={events}
+            folders={folders}
+          />
+
+          {topView === "calendar" && <CalendarSection events={events} />}
+          {topView === "documents" && (
+            <DocumentsPane
+              openFolderId={openFolderId}
+              setOpenFolderId={setOpenFolderId}
+              view={docsView}
+              boardMode={boardMode}
+              onUnlockClick={() => setShowUnlockModal(true)}
+              folders={folders}
+            />
+          )}
+          {topView === "maintenance" && <MaintenanceSection />}
+          {topView === "architectural" && <ArchitecturalSection />}
+          {topView === "contact" && <ContactSection />}
+        </div>
+
+        {showUnlockModal && (
+          <UnlockBoardModal
+            hoa={hoa}
+            onClose={() => setShowUnlockModal(false)}
+            onUnlock={handleUnlock}
           />
         )}
-        {topView === "maintenance" && <MaintenanceSection />}
-        {topView === "architectural" && <ArchitecturalSection />}
-        {topView === "contact" && <ContactSection />}
       </div>
-
-      {showUnlockModal && (
-        <UnlockBoardModal
-          onClose={() => setShowUnlockModal(false)}
-          onUnlock={unlockBoardMode}
-        />
-      )}
-    </div>
+    </HoaProvider>
   );
 }
