@@ -3461,22 +3461,7 @@ function DocumentPreview({ file, folder, hoaId }) {
   const isImage = /\.(png|jpe?g|gif|webp|avif|svg)$/.test(lower);
 
   if (isPdf) {
-    // Browsers render PDFs natively in iframes/embeds. Same-origin so no
-    // X-Frame-Options issue with our own resources.
-    return (
-      <iframe
-        src={url}
-        title={file.name}
-        style={{
-          width: "100%",
-          height: "100%",
-          minHeight: 600,
-          border: "1px solid var(--border)",
-          borderRadius: 4,
-          background: "#fdfdfb",
-        }}
-      />
-    );
+    return <PdfPreview url={url} title={file.name} />;
   }
   if (isImage) {
     return (
@@ -3488,6 +3473,90 @@ function DocumentPreview({ file, folder, hoaId }) {
     );
   }
   return <DocPlaceholder file={file} folder={folder} />;
+}
+
+// Fetches the PDF as a blob and renders it from a same-document blob: URL.
+// Going through fetch ensures partitioned session cookies are attached when
+// the portal is loaded as a third-party iframe (e.g. embedded on Wix), which
+// some browsers fail to do for plain <iframe src> navigations in deeply
+// nested cross-site contexts.
+function PdfPreview({ url, title }) {
+  const [blobUrl, setBlobUrl] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let createdUrl = null;
+    setBlobUrl(null);
+    setError(null);
+    (async () => {
+      try {
+        const res = await fetch(url, { credentials: "same-origin" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        if (cancelled) return;
+        createdUrl = URL.createObjectURL(blob);
+        setBlobUrl(createdUrl);
+      } catch (err) {
+        if (!cancelled) setError(err.message || "Failed to load");
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [url]);
+
+  const frameStyle = {
+    width: "100%",
+    height: "100%",
+    minHeight: 600,
+    border: "1px solid var(--border)",
+    borderRadius: 4,
+    background: "#fdfdfb",
+  };
+
+  if (error) {
+    return (
+      <div
+        style={{
+          ...frameStyle,
+          display: "grid",
+          placeItems: "center",
+          padding: 24,
+          color: "var(--t3)",
+          fontSize: 13,
+          textAlign: "center",
+        }}
+      >
+        <div>
+          Preview unavailable here.{" "}
+          <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>
+            Open the PDF in a new tab
+          </a>{" "}
+          or use the Download button above.
+        </div>
+      </div>
+    );
+  }
+
+  if (!blobUrl) {
+    return (
+      <div
+        style={{
+          ...frameStyle,
+          display: "grid",
+          placeItems: "center",
+          color: "var(--t3)",
+          fontSize: 13,
+        }}
+      >
+        Loading preview…
+      </div>
+    );
+  }
+
+  return <iframe src={blobUrl} title={title} style={frameStyle} />;
 }
 
 function DocPlaceholder({ file, folder }) {
