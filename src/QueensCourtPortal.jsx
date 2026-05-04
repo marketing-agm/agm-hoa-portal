@@ -28,6 +28,21 @@ import {
 import { HoaProvider, useHoa } from "./lib/hoaContext.jsx";
 import { apiGet, apiPost, apiDelete } from "./lib/api.js";
 import { shapeFolders, shapeEvent } from "./lib/format.js";
+
+let pdfjsPromise = null;
+function loadPdfJs() {
+  if (!pdfjsPromise) {
+    pdfjsPromise = (async () => {
+      const [pdfjs, workerUrl] = await Promise.all([
+        import("pdfjs-dist"),
+        import("pdfjs-dist/build/pdf.worker.min.mjs?url"),
+      ]);
+      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl.default;
+      return pdfjs;
+    })();
+  }
+  return pdfjsPromise;
+}
 import {
   generateMaintenanceMessage,
   generateArchitecturalMessage,
@@ -3475,35 +3490,81 @@ function DocumentPreview({ file, folder, hoaId }) {
   return <DocPlaceholder file={file} folder={folder} />;
 }
 
-// Fetches the PDF as a blob and renders it from a same-document blob: URL.
-// Going through fetch ensures partitioned session cookies are attached when
-// the portal is loaded as a third-party iframe (e.g. embedded on Wix), which
-// some browsers fail to do for plain <iframe src> navigations in deeply
-// nested cross-site contexts.
+// Renders the PDF with pdf.js into our own canvases. We can't lean on the
+// browser's built-in PDF viewer (<iframe src=...>) because it refuses to
+// render inside the deeply nested cross-site iframe Wix produces, even when
+// the bytes are loaded from a same-document blob: URL.
 function PdfPreview({ url, title }) {
-  const [blobUrl, setBlobUrl] = useState(null);
-  const [error, setError] = useState(null);
+  const containerRef = useRef(null);
+  const [status, setStatus] = useState("loading");
 
   useEffect(() => {
     let cancelled = false;
-    let createdUrl = null;
-    setBlobUrl(null);
-    setError(null);
+    let loadingTask = null;
+    let pdfDoc = null;
+    setStatus("loading");
+    if (containerRef.current) containerRef.current.innerHTML = "";
+
     (async () => {
       try {
-        const res = await fetch(url, { credentials: "same-origin" });
+        const [pdfjsLib, res] = await Promise.all([
+          loadPdfJs(),
+          fetch(url, { credentials: "same-origin" }),
+        ]);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const blob = await res.blob();
+        const buf = await res.arrayBuffer();
         if (cancelled) return;
-        createdUrl = URL.createObjectURL(blob);
-        setBlobUrl(createdUrl);
+
+        loadingTask = pdfjsLib.getDocument({ data: buf });
+        pdfDoc = await loadingTask.promise;
+        if (cancelled) return;
+
+        const container = containerRef.current;
+        if (!container) return;
+        const containerWidth = container.clientWidth || 800;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        for (let i = 1; i <= pdfDoc.numPages; i++) {
+          if (cancelled) return;
+          const page = await pdfDoc.getPage(i);
+          const baseViewport = page.getViewport({ scale: 1 });
+          const cssScale = Math.min(containerWidth / baseViewport.width, 2);
+          const viewport = page.getViewport({ scale: cssScale * dpr });
+
+          const canvas = document.createElement("canvas");
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          canvas.style.width = `${baseViewport.width * cssScale}px`;
+          canvas.style.height = `${baseViewport.height * cssScale}px`;
+          canvas.style.display = "block";
+          canvas.style.margin = i === 1 ? "0 auto" : "16px auto 0";
+          canvas.style.boxShadow = "0 1px 2px rgba(0,0,0,0.08)";
+          canvas.style.background = "#fff";
+
+          container.appendChild(canvas);
+          await page.render({
+            canvasContext: canvas.getContext("2d"),
+            viewport,
+          }).promise;
+        }
+
+        if (!cancelled) setStatus("ready");
       } catch (err) {
-        if (!cancelled) setError(err.message || "Failed to load");
+        if (!cancelled) {
+          console.error("PDF preview failed", err);
+          setStatus("error");
+        }
       }
     })();
+
     return () => {
       cancelled = true;
-      if (createdUrl) URL.revokeObjectURL(createdUrl);
+      if (loadingTask) {
+        try { loadingTask.destroy(); } catch {}
+      }
+      if (pdfDoc) {
+        try { pdfDoc.destroy(); } catch {}
+      }
     };
   }, [url]);
 
@@ -3511,52 +3572,57 @@ function PdfPreview({ url, title }) {
     width: "100%",
     height: "100%",
     minHeight: 600,
+    maxHeight: "calc(100vh - 220px)",
+    overflowY: "auto",
     border: "1px solid var(--border)",
     borderRadius: 4,
-    background: "#fdfdfb",
+    background: "#f4f3ee",
+    padding: 16,
+    boxSizing: "border-box",
   };
 
-  if (error) {
-    return (
-      <div
-        style={{
-          ...frameStyle,
-          display: "grid",
-          placeItems: "center",
-          padding: 24,
-          color: "var(--t3)",
-          fontSize: 13,
-          textAlign: "center",
-        }}
-      >
-        <div>
-          Preview unavailable here.{" "}
-          <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>
-            Open the PDF in a new tab
-          </a>{" "}
-          or use the Download button above.
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100%", minHeight: 600 }}>
+      <div ref={containerRef} title={title} style={frameStyle} />
+      {status === "loading" && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "grid",
+            placeItems: "center",
+            color: "var(--t3)",
+            fontSize: 13,
+            pointerEvents: "none",
+          }}
+        >
+          Loading preview…
         </div>
-      </div>
-    );
-  }
-
-  if (!blobUrl) {
-    return (
-      <div
-        style={{
-          ...frameStyle,
-          display: "grid",
-          placeItems: "center",
-          color: "var(--t3)",
-          fontSize: 13,
-        }}
-      >
-        Loading preview…
-      </div>
-    );
-  }
-
-  return <iframe src={blobUrl} title={title} style={frameStyle} />;
+      )}
+      {status === "error" && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "grid",
+            placeItems: "center",
+            padding: 24,
+            color: "var(--t3)",
+            fontSize: 13,
+            textAlign: "center",
+          }}
+        >
+          <div>
+            Preview unavailable.{" "}
+            <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>
+              Open the PDF in a new tab
+            </a>{" "}
+            or use the Download button above.
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function DocPlaceholder({ file, folder }) {
